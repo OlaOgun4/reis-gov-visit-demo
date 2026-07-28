@@ -28,7 +28,9 @@ export const Route = createFileRoute("/")({
           "Lumina is the modern platform for teams who want to design, build, and launch products without friction.",
       },
       { property: "og:type", content: "website" },
+      { property: "og:image", content: "https://id-preview--27876675-4a52-49f0-b27c-9a3ad5a723e0.lovable.app/images/hero-dashboard.png" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:image", content: "https://id-preview--27876675-4a52-49f0-b27c-9a3ad5a723e0.lovable.app/images/hero-dashboard.png" },
     ],
   }),
   component: Index,
@@ -139,7 +141,13 @@ function Index() {
           </div>
 
           <div className="mx-auto mt-16 max-w-5xl overflow-hidden rounded-2xl border border-border bg-card shadow-xl shadow-foreground/5">
-            <div className="aspect-[16/9] w-full bg-gradient-to-br from-secondary via-background to-muted" />
+            <img
+              src="/images/hero-dashboard.png"
+              alt="Lumina dashboard preview showing project overview, task list, and team activity"
+              width={1344}
+              height={756}
+              className="w-full"
+            />
           </div>
         </section>
 
