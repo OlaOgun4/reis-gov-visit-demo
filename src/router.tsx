@@ -3,7 +3,17 @@ import { createRouter } from "@tanstack/react-router";
 import { routeTree } from "./routeTree.gen";
 
 export const getRouter = () => {
-  const queryClient = new QueryClient();
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        // Transient network blips on the published site should retry rather than
+        // surface the generic "this page didn't load" boundary.
+        retry: 2,
+        retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 4000),
+        refetchOnWindowFocus: false,
+      },
+    },
+  });
 
   const router = createRouter({
     routeTree,

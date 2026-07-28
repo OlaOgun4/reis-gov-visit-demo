@@ -9,38 +9,261 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedReceptionRouteImport } from './routes/_authenticated/reception'
+import { Route as AuthenticatedKioskRouteImport } from './routes/_authenticated/kiosk'
+import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedDashboardIndexRouteImport } from './routes/_authenticated/dashboard.index'
+import { Route as AuthenticatedDashboardWalkinsRouteImport } from './routes/_authenticated/dashboard.walkins'
+import { Route as AuthenticatedDashboardUsersRouteImport } from './routes/_authenticated/dashboard.users'
+import { Route as AuthenticatedDashboardSettingsRouteImport } from './routes/_authenticated/dashboard.settings'
+import { Route as AuthenticatedDashboardReportsRouteImport } from './routes/_authenticated/dashboard.reports'
+import { Route as AuthenticatedDashboardRecordsRouteImport } from './routes/_authenticated/dashboard.records'
+import { Route as AuthenticatedDashboardLiveRouteImport } from './routes/_authenticated/dashboard.live'
+import { Route as AuthenticatedDashboardDirectoryRouteImport } from './routes/_authenticated/dashboard.directory'
+import { Route as AuthenticatedDashboardBookingsRouteImport } from './routes/_authenticated/dashboard.bookings'
+import { Route as AuthenticatedDashboardAuditRouteImport } from './routes/_authenticated/dashboard.audit'
 
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedReceptionRoute = AuthenticatedReceptionRouteImport.update({
+  id: '/reception',
+  path: '/reception',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedKioskRoute = AuthenticatedKioskRouteImport.update({
+  id: '/kiosk',
+  path: '/kiosk',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedDashboardIndexRoute =
+  AuthenticatedDashboardIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedDashboardRoute,
+  } as any)
+const AuthenticatedDashboardWalkinsRoute =
+  AuthenticatedDashboardWalkinsRouteImport.update({
+    id: '/walkins',
+    path: '/walkins',
+    getParentRoute: () => AuthenticatedDashboardRoute,
+  } as any)
+const AuthenticatedDashboardUsersRoute =
+  AuthenticatedDashboardUsersRouteImport.update({
+    id: '/users',
+    path: '/users',
+    getParentRoute: () => AuthenticatedDashboardRoute,
+  } as any)
+const AuthenticatedDashboardSettingsRoute =
+  AuthenticatedDashboardSettingsRouteImport.update({
+    id: '/settings',
+    path: '/settings',
+    getParentRoute: () => AuthenticatedDashboardRoute,
+  } as any)
+const AuthenticatedDashboardReportsRoute =
+  AuthenticatedDashboardReportsRouteImport.update({
+    id: '/reports',
+    path: '/reports',
+    getParentRoute: () => AuthenticatedDashboardRoute,
+  } as any)
+const AuthenticatedDashboardRecordsRoute =
+  AuthenticatedDashboardRecordsRouteImport.update({
+    id: '/records',
+    path: '/records',
+    getParentRoute: () => AuthenticatedDashboardRoute,
+  } as any)
+const AuthenticatedDashboardLiveRoute =
+  AuthenticatedDashboardLiveRouteImport.update({
+    id: '/live',
+    path: '/live',
+    getParentRoute: () => AuthenticatedDashboardRoute,
+  } as any)
+const AuthenticatedDashboardDirectoryRoute =
+  AuthenticatedDashboardDirectoryRouteImport.update({
+    id: '/directory',
+    path: '/directory',
+    getParentRoute: () => AuthenticatedDashboardRoute,
+  } as any)
+const AuthenticatedDashboardBookingsRoute =
+  AuthenticatedDashboardBookingsRouteImport.update({
+    id: '/bookings',
+    path: '/bookings',
+    getParentRoute: () => AuthenticatedDashboardRoute,
+  } as any)
+const AuthenticatedDashboardAuditRoute =
+  AuthenticatedDashboardAuditRouteImport.update({
+    id: '/audit',
+    path: '/audit',
+    getParentRoute: () => AuthenticatedDashboardRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/dashboard': typeof AuthenticatedDashboardRouteWithChildren
+  '/kiosk': typeof AuthenticatedKioskRoute
+  '/reception': typeof AuthenticatedReceptionRoute
+  '/dashboard/audit': typeof AuthenticatedDashboardAuditRoute
+  '/dashboard/bookings': typeof AuthenticatedDashboardBookingsRoute
+  '/dashboard/directory': typeof AuthenticatedDashboardDirectoryRoute
+  '/dashboard/live': typeof AuthenticatedDashboardLiveRoute
+  '/dashboard/records': typeof AuthenticatedDashboardRecordsRoute
+  '/dashboard/reports': typeof AuthenticatedDashboardReportsRoute
+  '/dashboard/settings': typeof AuthenticatedDashboardSettingsRoute
+  '/dashboard/users': typeof AuthenticatedDashboardUsersRoute
+  '/dashboard/walkins': typeof AuthenticatedDashboardWalkinsRoute
+  '/dashboard/': typeof AuthenticatedDashboardIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/kiosk': typeof AuthenticatedKioskRoute
+  '/reception': typeof AuthenticatedReceptionRoute
+  '/dashboard/audit': typeof AuthenticatedDashboardAuditRoute
+  '/dashboard/bookings': typeof AuthenticatedDashboardBookingsRoute
+  '/dashboard/directory': typeof AuthenticatedDashboardDirectoryRoute
+  '/dashboard/live': typeof AuthenticatedDashboardLiveRoute
+  '/dashboard/records': typeof AuthenticatedDashboardRecordsRoute
+  '/dashboard/reports': typeof AuthenticatedDashboardReportsRoute
+  '/dashboard/settings': typeof AuthenticatedDashboardSettingsRoute
+  '/dashboard/users': typeof AuthenticatedDashboardUsersRoute
+  '/dashboard/walkins': typeof AuthenticatedDashboardWalkinsRoute
+  '/dashboard': typeof AuthenticatedDashboardIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/auth': typeof AuthRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/_authenticated/dashboard': typeof AuthenticatedDashboardRouteWithChildren
+  '/_authenticated/kiosk': typeof AuthenticatedKioskRoute
+  '/_authenticated/reception': typeof AuthenticatedReceptionRoute
+  '/_authenticated/dashboard/audit': typeof AuthenticatedDashboardAuditRoute
+  '/_authenticated/dashboard/bookings': typeof AuthenticatedDashboardBookingsRoute
+  '/_authenticated/dashboard/directory': typeof AuthenticatedDashboardDirectoryRoute
+  '/_authenticated/dashboard/live': typeof AuthenticatedDashboardLiveRoute
+  '/_authenticated/dashboard/records': typeof AuthenticatedDashboardRecordsRoute
+  '/_authenticated/dashboard/reports': typeof AuthenticatedDashboardReportsRoute
+  '/_authenticated/dashboard/settings': typeof AuthenticatedDashboardSettingsRoute
+  '/_authenticated/dashboard/users': typeof AuthenticatedDashboardUsersRoute
+  '/_authenticated/dashboard/walkins': typeof AuthenticatedDashboardWalkinsRoute
+  '/_authenticated/dashboard/': typeof AuthenticatedDashboardIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/sitemap.xml'
+    | '/dashboard'
+    | '/kiosk'
+    | '/reception'
+    | '/dashboard/audit'
+    | '/dashboard/bookings'
+    | '/dashboard/directory'
+    | '/dashboard/live'
+    | '/dashboard/records'
+    | '/dashboard/reports'
+    | '/dashboard/settings'
+    | '/dashboard/users'
+    | '/dashboard/walkins'
+    | '/dashboard/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/auth'
+    | '/sitemap.xml'
+    | '/kiosk'
+    | '/reception'
+    | '/dashboard/audit'
+    | '/dashboard/bookings'
+    | '/dashboard/directory'
+    | '/dashboard/live'
+    | '/dashboard/records'
+    | '/dashboard/reports'
+    | '/dashboard/settings'
+    | '/dashboard/users'
+    | '/dashboard/walkins'
+    | '/dashboard'
+  id:
+    | '__root__'
+    | '/'
+    | '/_authenticated'
+    | '/auth'
+    | '/sitemap.xml'
+    | '/_authenticated/dashboard'
+    | '/_authenticated/kiosk'
+    | '/_authenticated/reception'
+    | '/_authenticated/dashboard/audit'
+    | '/_authenticated/dashboard/bookings'
+    | '/_authenticated/dashboard/directory'
+    | '/_authenticated/dashboard/live'
+    | '/_authenticated/dashboard/records'
+    | '/_authenticated/dashboard/reports'
+    | '/_authenticated/dashboard/settings'
+    | '/_authenticated/dashboard/users'
+    | '/_authenticated/dashboard/walkins'
+    | '/_authenticated/dashboard/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  AuthRoute: typeof AuthRoute
+  SitemapDotxmlRoute: typeof SitemapDotxmlRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,22 +271,153 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/reception': {
+      id: '/_authenticated/reception'
+      path: '/reception'
+      fullPath: '/reception'
+      preLoaderRoute: typeof AuthenticatedReceptionRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/kiosk': {
+      id: '/_authenticated/kiosk'
+      path: '/kiosk'
+      fullPath: '/kiosk'
+      preLoaderRoute: typeof AuthenticatedKioskRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/dashboard': {
+      id: '/_authenticated/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof AuthenticatedDashboardRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/dashboard/': {
+      id: '/_authenticated/dashboard/'
+      path: '/'
+      fullPath: '/dashboard/'
+      preLoaderRoute: typeof AuthenticatedDashboardIndexRouteImport
+      parentRoute: typeof AuthenticatedDashboardRoute
+    }
+    '/_authenticated/dashboard/walkins': {
+      id: '/_authenticated/dashboard/walkins'
+      path: '/walkins'
+      fullPath: '/dashboard/walkins'
+      preLoaderRoute: typeof AuthenticatedDashboardWalkinsRouteImport
+      parentRoute: typeof AuthenticatedDashboardRoute
+    }
+    '/_authenticated/dashboard/users': {
+      id: '/_authenticated/dashboard/users'
+      path: '/users'
+      fullPath: '/dashboard/users'
+      preLoaderRoute: typeof AuthenticatedDashboardUsersRouteImport
+      parentRoute: typeof AuthenticatedDashboardRoute
+    }
+    '/_authenticated/dashboard/settings': {
+      id: '/_authenticated/dashboard/settings'
+      path: '/settings'
+      fullPath: '/dashboard/settings'
+      preLoaderRoute: typeof AuthenticatedDashboardSettingsRouteImport
+      parentRoute: typeof AuthenticatedDashboardRoute
+    }
+    '/_authenticated/dashboard/reports': {
+      id: '/_authenticated/dashboard/reports'
+      path: '/reports'
+      fullPath: '/dashboard/reports'
+      preLoaderRoute: typeof AuthenticatedDashboardReportsRouteImport
+      parentRoute: typeof AuthenticatedDashboardRoute
+    }
+    '/_authenticated/dashboard/records': {
+      id: '/_authenticated/dashboard/records'
+      path: '/records'
+      fullPath: '/dashboard/records'
+      preLoaderRoute: typeof AuthenticatedDashboardRecordsRouteImport
+      parentRoute: typeof AuthenticatedDashboardRoute
+    }
+    '/_authenticated/dashboard/live': {
+      id: '/_authenticated/dashboard/live'
+      path: '/live'
+      fullPath: '/dashboard/live'
+      preLoaderRoute: typeof AuthenticatedDashboardLiveRouteImport
+      parentRoute: typeof AuthenticatedDashboardRoute
+    }
+    '/_authenticated/dashboard/directory': {
+      id: '/_authenticated/dashboard/directory'
+      path: '/directory'
+      fullPath: '/dashboard/directory'
+      preLoaderRoute: typeof AuthenticatedDashboardDirectoryRouteImport
+      parentRoute: typeof AuthenticatedDashboardRoute
+    }
+    '/_authenticated/dashboard/bookings': {
+      id: '/_authenticated/dashboard/bookings'
+      path: '/bookings'
+      fullPath: '/dashboard/bookings'
+      preLoaderRoute: typeof AuthenticatedDashboardBookingsRouteImport
+      parentRoute: typeof AuthenticatedDashboardRoute
+    }
+    '/_authenticated/dashboard/audit': {
+      id: '/_authenticated/dashboard/audit'
+      path: '/audit'
+      fullPath: '/dashboard/audit'
+      preLoaderRoute: typeof AuthenticatedDashboardAuditRouteImport
+      parentRoute: typeof AuthenticatedDashboardRoute
+    }
   }
 }
 
+interface AuthenticatedDashboardRouteChildren {
+  AuthenticatedDashboardAuditRoute: typeof AuthenticatedDashboardAuditRoute
+  AuthenticatedDashboardBookingsRoute: typeof AuthenticatedDashboardBookingsRoute
+  AuthenticatedDashboardDirectoryRoute: typeof AuthenticatedDashboardDirectoryRoute
+  AuthenticatedDashboardLiveRoute: typeof AuthenticatedDashboardLiveRoute
+  AuthenticatedDashboardRecordsRoute: typeof AuthenticatedDashboardRecordsRoute
+  AuthenticatedDashboardReportsRoute: typeof AuthenticatedDashboardReportsRoute
+  AuthenticatedDashboardSettingsRoute: typeof AuthenticatedDashboardSettingsRoute
+  AuthenticatedDashboardUsersRoute: typeof AuthenticatedDashboardUsersRoute
+  AuthenticatedDashboardWalkinsRoute: typeof AuthenticatedDashboardWalkinsRoute
+  AuthenticatedDashboardIndexRoute: typeof AuthenticatedDashboardIndexRoute
+}
+
+const AuthenticatedDashboardRouteChildren: AuthenticatedDashboardRouteChildren =
+  {
+    AuthenticatedDashboardAuditRoute: AuthenticatedDashboardAuditRoute,
+    AuthenticatedDashboardBookingsRoute: AuthenticatedDashboardBookingsRoute,
+    AuthenticatedDashboardDirectoryRoute: AuthenticatedDashboardDirectoryRoute,
+    AuthenticatedDashboardLiveRoute: AuthenticatedDashboardLiveRoute,
+    AuthenticatedDashboardRecordsRoute: AuthenticatedDashboardRecordsRoute,
+    AuthenticatedDashboardReportsRoute: AuthenticatedDashboardReportsRoute,
+    AuthenticatedDashboardSettingsRoute: AuthenticatedDashboardSettingsRoute,
+    AuthenticatedDashboardUsersRoute: AuthenticatedDashboardUsersRoute,
+    AuthenticatedDashboardWalkinsRoute: AuthenticatedDashboardWalkinsRoute,
+    AuthenticatedDashboardIndexRoute: AuthenticatedDashboardIndexRoute,
+  }
+
+const AuthenticatedDashboardRouteWithChildren =
+  AuthenticatedDashboardRoute._addFileChildren(
+    AuthenticatedDashboardRouteChildren,
+  )
+
+interface AuthenticatedRouteRouteChildren {
+  AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRouteWithChildren
+  AuthenticatedKioskRoute: typeof AuthenticatedKioskRoute
+  AuthenticatedReceptionRoute: typeof AuthenticatedReceptionRoute
+}
+
+const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedDashboardRoute: AuthenticatedDashboardRouteWithChildren,
+  AuthenticatedKioskRoute: AuthenticatedKioskRoute,
+  AuthenticatedReceptionRoute: AuthenticatedReceptionRoute,
+}
+
+const AuthenticatedRouteRouteWithChildren =
+  AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  AuthRoute: AuthRoute,
+  SitemapDotxmlRoute: SitemapDotxmlRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
