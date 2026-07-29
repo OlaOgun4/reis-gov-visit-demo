@@ -158,12 +158,88 @@ function valueForLabel(text: NormalisedText, label: RegExp): string {
 const SURNAME_LABEL = /SURNAME|LAST\s*NAME|FAMILY\s*NAME|NOM/;
 const FIRSTNAME_LABEL = /FIRST\s*NAMES?|GIVEN\s*NAMES?|FORE\s*NAMES?|OTHER\s*NAMES?|PRENOMS?/;
 
+/**
+ * FRSC licences follow the EU numbered layout: "1." surname, "2." given names.
+ * OCR often loses the word labels entirely, so read the numbered rows too.
+ */
+function numberedLicenceNames(text: NormalisedText) {
+  const pick = (n: number) => {
+    for (const line of text.lines) {
+      const m = line.match(new RegExp(`^${n}\\s*[.)\\-:]\\s*(.+)$`));
+      if (!m) continue;
+      const v = cleanNameValue(m[1]);
+      if (looksLikeName(v)) return v;
+    }
+    return "";
+  };
+  return { lastName: pick(1), firstName: pick(2) };
+}
+
+/** "BELLO, MUSA" or "BELLO MUSA" on one line under the photo. */
+function splitCombined(value: string) {
+  const parts = value.split(/\s*,\s*|\s+/).filter(Boolean);
+  if (parts.length < 2) return null;
+  if (value.includes(",")) {
+    const [last, ...rest] = value.split(",");
+    return { lastName: cleanNameValue(last), firstName: cleanNameValue(rest.join(" ")) };
+  }
+  return { lastName: parts[0], firstName: parts.slice(1).join(" ") };
+}
+
 function extractNames(text: NormalisedText) {
   let lastName = valueForLabel(text, SURNAME_LABEL);
   let firstName = valueForLabel(text, FIRSTNAME_LABEL);
 
-  if (!firstName && !lastName) {
+  if (!firstName || !lastName) {
+    const numbered = numberedLicenceNames(text);
+    if (!lastName) lastName = numbered.lastName;
+    if (!firstName) firstName = numbered.firstName;
+  }
+
+  if (!firstName || !lastName) {
     const candidates = text.lines.map(cleanNameValue).filter(looksLikeName);
+    const taken = (v: string) => v && (v === firstName || v === lastName);
+    const free = candidates.filter((c) => !taken(c));
+
+    if (!firstName && !lastName) {
+      if (candidates.length >= 2) {
+        lastName = candidates[0];
+        firstName = candidates[1];
+      } else if (candidates.length === 1) {
+        const split = splitCombined(candidates[0]);
+        if (split) {
+          lastName = split.lastName;
+          firstName = split.firstName;
+        } else lastName = candidates[0];
+      }
+    } else if (free.length) {
+      // One side found — take the nearest other plausible name line, or split it.
+      const other = free[0];
+      const split = splitCombined(other);
+      if (!firstName) firstName = split && !lastName ? split.firstName : other;
+      else if (!lastName) lastName = other;
+    } else {
+      // Only one side found and it may actually hold both names.
+      const combined = splitCombined(firstName || lastName);
+      if (combined) {
+        if (!lastName) {
+          lastName = combined.lastName;
+          firstName = combined.firstName;
+        } else if (!firstName) {
+          firstName = combined.firstName;
+          lastName = combined.lastName;
+        }
+      }
+    }
+  }
+  return { firstName: titleCase(firstName), lastName: titleCase(lastName) };
+}
+
+function unusedLegacyExtractNames(text: NormalisedText) {
+  {
+    const candidates = text.lines.map(cleanNameValue).filter(looksLikeName);
+    let lastName = "";
+    let firstName = "";
     if (candidates.length >= 2) {
       lastName = candidates[0];
       firstName = candidates[1];
@@ -174,8 +250,8 @@ function extractNames(text: NormalisedText) {
         firstName = parts.slice(0, -1).join(" ");
       } else lastName = candidates[0];
     }
+    return { firstName, lastName };
   }
-  return { firstName: titleCase(firstName), lastName: titleCase(lastName) };
 }
 
 /** Grab a value near a label, searching the same line and the following one. */
