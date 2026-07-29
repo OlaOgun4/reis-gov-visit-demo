@@ -246,6 +246,13 @@ export function parseLabelledOcr(rawText: string): ParsedIdentity | null {
   const documentNumber = numberMatch?.toUpperCase() ?? "";
 
   if (!firstName && !lastName && !documentNumber) return null;
+  const guessedType =
+    detectDocumentType(text) ??
+    (/^\d{11}$/.test(documentNumber)
+      ? "NIN Card"
+      : /^[A-Z]\d{8}$/.test(documentNumber)
+        ? "Nigerian Passport"
+        : undefined);
   const title = (v: string) =>
     v
       .toLowerCase()
@@ -255,7 +262,7 @@ export function parseLabelledOcr(rawText: string): ParsedIdentity | null {
     firstName: title(firstName),
     lastName: title(lastName),
     documentNumber,
-    documentType: detectDocumentType(text),
+    documentType: guessedType,
     source: "ocr",
     confidence: 0.55,
   };
