@@ -525,6 +525,20 @@ export function parseNigerianId(rawText: string): ExtractedIdentity {
       if (!lastName) lastName = generic.lastName;
       if (!firstName) firstName = generic.firstName;
     }
+  } else if (type === "Nigerian NIN" || type === "Nigerian Permanent Voter Card") {
+    // Bilingual labels first, then the printed row order, then generic guessing.
+    lastName = titleCase(valueForLabel(text, SURNAME_LABEL));
+    firstName = titleCase(valueForLabel(text, FIRSTNAME_LABEL));
+    if (!firstName || !lastName) {
+      const structural = ninStructuralNames(text);
+      if (!lastName) lastName = structural.lastName;
+      if (!firstName) firstName = structural.firstName;
+    }
+    if (!firstName || !lastName) {
+      const generic = extractNames(text);
+      if (!lastName) lastName = generic.lastName;
+      if (!firstName) firstName = generic.firstName;
+    }
   } else {
     ({ firstName, lastName } = extractNames(text));
   }
