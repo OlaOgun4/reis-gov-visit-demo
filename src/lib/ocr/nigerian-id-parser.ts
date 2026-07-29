@@ -533,6 +533,14 @@ export function parseNigerianId(rawText: string): ExtractedIdentity {
     if (!firstName) firstName = structural.firstName;
     if (!lastName) lastName = structural.lastName;
   }
+  if (
+    (type === "Nigerian NIN" || type === "Nigerian Permanent Voter Card") &&
+    (!firstName || !lastName)
+  ) {
+    const structural = ninStructuralNames(text);
+    if (!firstName) firstName = structural.firstName;
+    if (!lastName) lastName = structural.lastName;
+  }
   if (!firstName && mrz?.firstName) firstName = titleCase(mrz.firstName);
   if (!lastName && mrz?.lastName) lastName = titleCase(mrz.lastName);
 
