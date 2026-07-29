@@ -26,9 +26,9 @@ function normalizeOcr(s: string) {
 const CLEAN = (s: string) => s.replace(/[^A-Z0-9<]/g, "");
 
 const DOC_TYPE_HINTS: Array<[RegExp, string]> = [
-  [/passport|passeport/i, "Passport"],
+  [/passport|passeport/i, "Nigerian Passport"],
   [/driv(er|ing)\s*(’|')?s?\s*licen[cs]e/i, "Driving Licence"],
-  [/\bnin\b|national\s*identi(ty|fication)/i, "National ID (NIN)"],
+  [/\bnin\b|national\s*identi(ty|fication)/i, "NIN Card"],
   [/voter|inec/i, "Voter's Card"],
   [/staff|employee/i, "Staff ID"],
   [/residence|permit/i, "Residence Permit"],
@@ -74,7 +74,7 @@ export function parseMrz(rawText: string): ParsedIdentity | null {
     return {
       ...names,
       documentNumber,
-      documentType: l1.startsWith("P") ? "Passport" : detectDocumentType(rawText) ?? "National ID (NIN)",
+      documentType: l1.startsWith("P") ? "Nigerian Passport" : detectDocumentType(rawText) ?? "NIN Card",
       nationality: l2.slice(10, 13).replace(/</g, ""),
       birthDate: l2.slice(13, 19),
       expiryDate: l2.slice(21, 27),
@@ -93,7 +93,7 @@ export function parseMrz(rawText: string): ParsedIdentity | null {
     return {
       ...names,
       documentNumber,
-      documentType: detectDocumentType(rawText) ?? "National ID (NIN)",
+      documentType: detectDocumentType(rawText) ?? "NIN Card",
       nationality: l2.slice(15, 18).replace(/</g, ""),
       birthDate: l2.slice(0, 6),
       expiryDate: l2.slice(8, 14),
@@ -215,7 +215,9 @@ export function parseLabelledOcr(rawText: string): ParsedIdentity | null {
   }
 
   const numberMatch =
-    text.match(/(?:document|licence|license|passport|card|id|nin)\s*(?:no|number|#)?[:\s]+([A-Z0-9-]{5,20})/i) ??
+    text.match(
+      /\b(?:document|licence|license|passport|card|id|nin)\s*(?:no\.?|number|#)?\s*[:.\-]?\s*([A-Z0-9][A-Z0-9-]{4,19})\b/i,
+    ) ??
     text.match(/\b([A-Z]{1,3}\d{6,12})\b/) ??
     text.match(/\b(\d{9,12})\b/);
   const documentNumber = numberMatch?.[1]?.toUpperCase() ?? "";
