@@ -1,4 +1,4 @@
-import { test, expect } from "vitest";
+import { test, expect, describe, it } from "vitest";
 import { parseNigerianId } from "@/lib/ocr/nigerian-id-parser";
 test("nin", () => {
   const r = parseNigerianId(`FEDERAL REPUBLIC OF NIGERIA\nNATIONAL IDENTITY MANAGEMENT COMMISSION\nSURNAME\nOKAFOR\nFIRST NAME\nADEBAYO\nNATIONAL IDENTIFICATION NUMBER\n1234 5678 901\nTRACKING ID: WXY123456`);
