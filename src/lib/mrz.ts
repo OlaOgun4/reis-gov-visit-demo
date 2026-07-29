@@ -39,6 +39,18 @@ export function detectDocumentType(rawText: string): string | undefined {
   return undefined;
 }
 
+/** Words that show up on ID cards but are never a person's name. */
+const NAME_STOPWORDS =
+  /federal|republic|nigeria|national|identity|identification|card|passport|licence|license|driver|driving|voter|commission|authority|management|ministry|government|date|birth|sex|male|female|expiry|issue|address|number|signature|holder|state|origin|nationality|surname|given|names?|staff|employee|department/i;
+
+function looksLikeName(value: string) {
+  const v = value.trim();
+  if (v.length < 3 || v.length > 40) return false;
+  if (/\d/.test(v)) return false;
+  if (NAME_STOPWORDS.test(v)) return false;
+  return /^[A-Za-z][A-Za-z' -]+$/.test(v);
+}
+
 function titleCase(value: string) {
   return value
     .replace(/</g, " ")
@@ -198,18 +210,24 @@ export function parseLabelledOcr(rawText: string): ParsedIdentity | null {
 
   let lastName = pick(/sur\s*?name|last\s*name|nom|family\s*name/);
   let firstName = pick(/given\s*names?|first\s*name|fore\s*names?|other\s*names?|pr[ée]noms?/);
+  if (!looksLikeName(lastName)) lastName = "";
+  if (!looksLikeName(firstName)) firstName = "";
 
   // Fallback: uppercase name-only lines (very common on ID cards without labels).
   if (!firstName && !lastName) {
-    const capsLines = lines.filter((l) => /^[A-Z][A-Z' -]{3,30}$/.test(l.trim()));
-    if (capsLines.length >= 2) {
-      lastName = cleanName(capsLines[0]);
-      firstName = cleanName(capsLines[1]);
-    } else if (capsLines.length === 1) {
-      const parts = cleanName(capsLines[0]).split(" ");
+    const nameLines = lines
+      .map((l) => cleanName(l))
+      .filter((l) => looksLikeName(l));
+    if (nameLines.length >= 2) {
+      lastName = nameLines[0];
+      firstName = nameLines[1];
+    } else if (nameLines.length === 1) {
+      const parts = nameLines[0].split(" ");
       if (parts.length >= 2) {
         lastName = parts[parts.length - 1];
         firstName = parts.slice(0, -1).join(" ");
+      } else {
+        lastName = nameLines[0];
       }
     }
   }
