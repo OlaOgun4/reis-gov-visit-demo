@@ -214,13 +214,17 @@ export function parseLabelledOcr(rawText: string): ParsedIdentity | null {
     }
   }
 
+  const labelled = [
+    ...text.matchAll(
+      /\b(?:document|licence|license|passport|card|id|nin)\s*(?:no\.?|number|#)?\s*[:.\-]?\s*([A-Z0-9][A-Z0-9-]{4,19})\b/gi,
+    ),
+  ]
+    .map((m) => m[1])
+    .find((v) => /\d/.test(v));
   const numberMatch =
-    text.match(
-      /\b(?:document|licence|license|passport|card|id|nin)\s*(?:no\.?|number|#)?\s*[:.\-]?\s*([A-Z0-9][A-Z0-9-]{4,19})\b/i,
-    ) ??
-    text.match(/\b([A-Z]{1,3}\d{6,12})\b/) ??
-    text.match(/\b(\d{9,12})\b/);
-  const candidateNumber = numberMatch?.[1]?.toUpperCase() ?? "";
+    labelled ??
+    text.match(/\b([A-Z]{1,3}\d{6,12})\b/)?.[1] ??
+    text.match(/\b(\d{9,12})\b/)?.[1];
   const documentNumber = /\d/.test(candidateNumber) ? candidateNumber : "";
 
   if (!firstName && !lastName && !documentNumber) return null;
