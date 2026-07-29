@@ -15,7 +15,29 @@ export interface ParsedIdentity {
   confidence: number;
 }
 
+/** OCR frequently renders MRZ filler '<' as «, ≪, K, or spaces between chevrons. */
+function normalizeOcr(s: string) {
+  return s
+    .replace(/\u00a0/g, " ")
+    .replace(/[«‹≪<]/g, "<")
+    .replace(/[|]/g, "I");
+}
+
 const CLEAN = (s: string) => s.replace(/[^A-Z0-9<]/g, "");
+
+const DOC_TYPE_HINTS: Array<[RegExp, string]> = [
+  [/passport|passeport/i, "Passport"],
+  [/driv(er|ing)\s*(’|')?s?\s*licen[cs]e/i, "Driving Licence"],
+  [/\bnin\b|national\s*identi(ty|fication)/i, "National ID (NIN)"],
+  [/voter|inec/i, "Voter's Card"],
+  [/staff|employee/i, "Staff ID"],
+  [/residence|permit/i, "Residence Permit"],
+];
+
+export function detectDocumentType(rawText: string): string | undefined {
+  for (const [re, label] of DOC_TYPE_HINTS) if (re.test(rawText)) return label;
+  return undefined;
+}
 
 function titleCase(value: string) {
   return value
@@ -33,7 +55,7 @@ function nameFromMrz(field: string) {
 
 /** Extract the MRZ from raw OCR text and decode it. Supports TD1, TD2 and TD3. */
 export function parseMrz(rawText: string): ParsedIdentity | null {
-  const candidates = rawText
+  const candidates = normalizeOcr(rawText)
     .toUpperCase()
     .split(/\r?\n/)
     .map(CLEAN)
@@ -45,14 +67,14 @@ export function parseMrz(rawText: string): ParsedIdentity | null {
     const l2 = candidates[i + 1];
     const size = l1.length >= 40 ? 44 : 36;
     if (Math.abs(l1.length - size) > 3 || Math.abs(l2.length - size) > 3) continue;
-    if (!/^[PIACV]/.test(l1)) continue;
+    if (!/^[PIACVD]/.test(l1)) continue;
     const names = nameFromMrz(l1.slice(5));
     const documentNumber = l2.slice(0, 9).replace(/</g, "");
     if (!documentNumber || (!names.lastName && !names.firstName)) continue;
     return {
       ...names,
       documentNumber,
-      documentType: l1.startsWith("P") ? "Nigerian Passport" : undefined,
+      documentType: l1.startsWith("P") ? "Passport" : detectDocumentType(rawText) ?? "National ID (NIN)",
       nationality: l2.slice(10, 13).replace(/</g, ""),
       birthDate: l2.slice(13, 19),
       expiryDate: l2.slice(21, 27),
@@ -71,6 +93,7 @@ export function parseMrz(rawText: string): ParsedIdentity | null {
     return {
       ...names,
       documentNumber,
+      documentType: detectDocumentType(rawText) ?? "National ID (NIN)",
       nationality: l2.slice(15, 18).replace(/</g, ""),
       birthDate: l2.slice(0, 6),
       expiryDate: l2.slice(8, 14),
