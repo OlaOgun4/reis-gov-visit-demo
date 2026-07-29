@@ -235,25 +235,6 @@ function extractNames(text: NormalisedText) {
   return { firstName: titleCase(firstName), lastName: titleCase(lastName) };
 }
 
-function unusedLegacyExtractNames(text: NormalisedText) {
-  {
-    const candidates = text.lines.map(cleanNameValue).filter(looksLikeName);
-    let lastName = "";
-    let firstName = "";
-    if (candidates.length >= 2) {
-      lastName = candidates[0];
-      firstName = candidates[1];
-    } else if (candidates.length === 1) {
-      const parts = candidates[0].split(" ");
-      if (parts.length >= 2) {
-        lastName = parts[parts.length - 1];
-        firstName = parts.slice(0, -1).join(" ");
-      } else lastName = candidates[0];
-    }
-    return { firstName, lastName };
-  }
-}
-
 /** Grab a value near a label, searching the same line and the following one. */
 function nearLabel(text: NormalisedText, label: RegExp, pattern: RegExp): string {
   for (let i = 0; i < text.upperLines.length; i++) {
