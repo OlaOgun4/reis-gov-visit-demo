@@ -225,7 +225,7 @@ export function parseLabelledOcr(rawText: string): ParsedIdentity | null {
     labelled ??
     text.match(/\b([A-Z]{1,3}\d{6,12})\b/)?.[1] ??
     text.match(/\b(\d{9,12})\b/)?.[1];
-  const documentNumber = /\d/.test(candidateNumber) ? candidateNumber : "";
+  const documentNumber = numberMatch?.toUpperCase() ?? "";
 
   if (!firstName && !lastName && !documentNumber) return null;
   const title = (v: string) =>
