@@ -22,3 +22,15 @@ test("licence", () => {
   expect(r.documentNumber).toBe("ABC12345AA01");
   expect(r.lastName).toBe("Bello");
 });
+
+test("licence without numbered markers", () => {
+  const r = parseNigerianId(`FEDERAL REPUBLIC OF NIGERIA\nDRIVER'S LICENCE\nSURNAME\nADEYEMI\nGIVEN NAMES\nTUNDE OLA\nDATE OF BIRTH 01/01/1980\nLICENCE NO: ABC12345AA01`);
+  expect(r.lastName).toBe("Adeyemi");
+  expect(r.firstName).toBe("Tunde Ola");
+});
+
+test("licence with no labels at all", () => {
+  const r = parseNigerianId(`FEDERAL REPUBLIC OF NIGERIA\nFRSC\nDRIVING LICENCE\nOGUNDE\nFEMI\n01/01/1980\nABC12345AA01`);
+  expect(r.lastName).toBe("Ogunde");
+  expect(r.firstName).toBe("Femi");
+});
