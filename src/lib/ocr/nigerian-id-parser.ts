@@ -148,7 +148,12 @@ function valueForLabel(text: NormalisedText, label: RegExp): string {
   for (let i = 0; i < text.upperLines.length; i++) {
     const m = text.upperLines[i].match(new RegExp(`(?:^|\\b)(?:${label.source})\\b\\s*[:.\\-]?\\s*(.*)$`));
     if (!m) continue;
-    const inline = cleanNameValue(m[1] ?? "");
+    // Drop bilingual label halves: "SURNAME/NOM", "GIVEN NAMES / PRENOMS".
+    const tail = (m[1] ?? "").replace(
+      /^\s*[\/|]\s*(NOMS?|PRENOMS?|APELLIDOS?|NOMBRES?)\b\s*[:.\-]?\s*/i,
+      "",
+    );
+    const inline = cleanNameValue(tail);
     if (inline.length > 1 && looksLikeName(inline)) return inline;
     for (let j = i + 1; j < Math.min(i + 3, text.lines.length); j++) {
       const next = cleanNameValue(text.lines[j]);
