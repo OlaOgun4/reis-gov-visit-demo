@@ -11,6 +11,12 @@ type ZXingReader = {
   ) => Promise<{ stop: () => void }>;
 };
 
+type OcrWorker = {
+  recognize: (img: unknown) => Promise<{ data: { text: string } }>;
+  setParameters?: (p: Record<string, string>) => Promise<unknown>;
+  terminate: () => Promise<unknown>;
+};
+
 export interface ScannerProps {
   /** "document" runs OCR/MRZ on capture and live 1D/2D code reading. "code" only reads codes. */
   mode?: "document" | "code";
@@ -25,10 +31,7 @@ export function DocumentScanner({ mode = "document", onIdentity, onCode, hint }:
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const controlsRef = useRef<{ stop: () => void } | null>(null);
-  const workerRef = useRef<{
-    recognize: (img: unknown) => Promise<{ data: { text: string } }>;
-    terminate: () => Promise<unknown>;
-  } | null>(null);
+  const workerRef = useRef<OcrWorker | null>(null);
   const seenRef = useRef<string>("");
 
   const [facing, setFacing] = useState<"environment" | "user">("environment");
@@ -136,21 +139,38 @@ export function DocumentScanner({ mode = "document", onIdentity, onCode, hint }:
     }
   }
 
-  function grabFrame(scale = 1) {
+  function grabFrame(opts: { enhance?: boolean; crop?: "full" | "bottom" } = {}) {
+    const { enhance = true, crop = "full" } = opts;
     const video = videoRef.current;
     const canvas = canvasRef.current;
     if (!video || !canvas || !video.videoWidth) return null;
-    canvas.width = Math.round(video.videoWidth * scale);
-    canvas.height = Math.round(video.videoHeight * scale);
+    const sx = 0;
+    const sy = crop === "bottom" ? Math.round(video.videoHeight * 0.6) : 0;
+    const sw = video.videoWidth;
+    const sh = crop === "bottom" ? video.videoHeight - sy : video.videoHeight;
+    // Upscale — Tesseract is far more accurate on larger glyphs.
+    const factor = sw < 1400 ? 2 : 1;
+    canvas.width = Math.round(sw * factor);
+    canvas.height = Math.round(sh * factor);
     const ctx = canvas.getContext("2d", { willReadFrequently: true });
     if (!ctx) return null;
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    ctx.drawImage(video, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+    if (!enhance) return canvas;
     // Grayscale + contrast stretch materially improves OCR on ID documents.
     const frame = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const px = frame.data;
+    let min = 255;
+    let max = 0;
     for (let i = 0; i < px.length; i += 4) {
       const g = 0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2];
-      const v = g < 110 ? Math.max(0, g - 40) : Math.min(255, g + 40);
+      if (g < min) min = g;
+      if (g > max) max = g;
+    }
+    const span = Math.max(1, max - min);
+    for (let i = 0; i < px.length; i += 4) {
+      const g = 0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2];
+      const n = ((g - min) / span) * 255;
+      const v = Math.max(0, Math.min(255, (n - 128) * 1.5 + 128));
       px[i] = px[i + 1] = px[i + 2] = v;
     }
     ctx.putImageData(frame, 0, 0);
@@ -168,7 +188,7 @@ export function DocumentScanner({ mode = "document", onIdentity, onCode, hint }:
         }
       },
     });
-    workerRef.current = worker as unknown as typeof workerRef.current;
+    workerRef.current = worker as unknown as OcrWorker;
     return workerRef.current!;
   }
 
@@ -177,14 +197,44 @@ export function DocumentScanner({ mode = "document", onIdentity, onCode, hint }:
     setBusy(true);
     setError(null);
     try {
-      const canvas = grabFrame();
-      if (!canvas) throw new Error("Camera frame not ready yet — hold still and try again.");
       const worker = await getWorker();
       setProgress("Reading document…");
-      const { data } = await worker.recognize(canvas);
-      const identity = parseScannedText(data.text ?? "");
+
+      // Multiple passes: enhanced full frame, raw full frame, and the MRZ strip.
+      const passes: Array<{ enhance?: boolean; crop?: "full" | "bottom" }> = [
+        { enhance: true, crop: "full" },
+        { enhance: false, crop: "full" },
+        { enhance: true, crop: "bottom" },
+      ];
+
+      let best: ParsedIdentity | null = null;
+      let sawFrame = false;
+      const merge = (a: ParsedIdentity | null, b: ParsedIdentity | null) => {
+        if (!a) return b;
+        if (!b) return a;
+        const base = b.confidence > a.confidence ? b : a;
+        const other = base === a ? b : a;
+        return {
+          ...base,
+          firstName: base.firstName || other.firstName,
+          lastName: base.lastName || other.lastName,
+          documentNumber: base.documentNumber || other.documentNumber,
+          documentType: base.documentType ?? other.documentType,
+        };
+      };
+
+      for (const pass of passes) {
+        const canvas = grabFrame(pass);
+        if (!canvas) continue;
+        sawFrame = true;
+        const { data } = await worker.recognize(canvas);
+        best = merge(best, parseScannedText(data.text ?? ""));
+        if (best?.documentNumber && (best.firstName || best.lastName)) break;
+      }
+      if (!sawFrame) throw new Error("Camera frame not ready yet — hold still and try again.");
+      const identity = best;
       setAttempts((a) => a + 1);
-      if (!identity || (!identity.documentNumber && !identity.lastName)) {
+      if (!identity || (!identity.documentNumber && !identity.lastName && !identity.firstName)) {
         setError(
           "No readable name or document number found. Fill the frame with the data page, avoid glare, then capture again.",
         );
