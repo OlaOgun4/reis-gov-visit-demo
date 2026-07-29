@@ -305,6 +305,46 @@ function licenceStructuralNames(text: NormalisedText) {
 }
 
 /** Grab a value near a label, searching the same line and the following one. */
+
+/* --------------------------------------------------- passport data page */
+
+const PASSPORT_NOISE =
+  /FEDERAL|REPUBLIC|NIGERIA|PASSPORT|PASSEPORT|TYPE|CODE|AUTHORITY|AUTORITE|DATE|BIRTH|ISSUE|EXPIR|SIGNATURE|NATIONALITY|SEX|MALE|FEMALE|PLACE|HOLDER|SURNAME|GIVEN|NAMES?|ABUJA|LAGOS|MRZ/;
+
+/** A line that plausibly carries a printed name row on the data page. */
+function isPassportNameLine(rawLine: string) {
+  const v = cleanNameValue(rawLine);
+  if (!v) return false;
+  // Needs at least one run of 3+ uppercase letters (printed rows are caps).
+  if (!/[A-Z]{3,}/.test(v)) return false;
+  if (PASSPORT_NOISE.test(v.toUpperCase())) return false;
+  if (/^P\s*<?\s*NGA/.test(v.toUpperCase())) return false;
+  return v.replace(/[^A-Za-z]/g, "").length >= 3;
+}
+
+/**
+ * Nigerian passport data pages print, in order: the "P NGA <number>" row, then
+ * the surname row, then the given-names row. OCR frequently loses the French/
+ * English labels, so recover the two name rows positionally from that anchor.
+ */
+function passportStructuralNames(text: NormalisedText) {
+  let anchor = -1;
+  for (let i = 0; i < text.upperLines.length; i++) {
+    if (/^P\s*[<\s]\s*NGA\b|\bP\s*<\s*NGA/.test(text.upperLines[i])) {
+      anchor = i;
+      break;
+    }
+  }
+  const rows: string[] = [];
+  const start = anchor >= 0 ? anchor + 1 : 0;
+  for (let i = start; i < text.lines.length && rows.length < 2; i++) {
+    if (/^P<NGA/.test(text.upperLines[i].replace(/\s+/g, ""))) break; // MRZ band
+    if (!isPassportNameLine(text.lines[i])) continue;
+    rows.push(cleanNameValue(text.lines[i]));
+  }
+  return { lastName: titleCase(rows[0] ?? ""), firstName: titleCase(rows[1] ?? "") };
+}
+
 function nearLabel(text: NormalisedText, label: RegExp, pattern: RegExp): string {
   for (let i = 0; i < text.upperLines.length; i++) {
     if (!new RegExp(label.source).test(text.upperLines[i])) continue;
