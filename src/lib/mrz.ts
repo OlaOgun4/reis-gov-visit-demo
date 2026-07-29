@@ -15,7 +15,29 @@ export interface ParsedIdentity {
   confidence: number;
 }
 
+/** OCR frequently renders MRZ filler '<' as «, ≪, K, or spaces between chevrons. */
+function normalizeOcr(s: string) {
+  return s
+    .replace(/\u00a0/g, " ")
+    .replace(/[«‹≪<]/g, "<")
+    .replace(/[|]/g, "I");
+}
+
 const CLEAN = (s: string) => s.replace(/[^A-Z0-9<]/g, "");
+
+const DOC_TYPE_HINTS: Array<[RegExp, string]> = [
+  [/passport|passeport/i, "Nigerian Passport"],
+  [/driv(er|ing)\s*(’|')?s?\s*licen[cs]e/i, "Driving Licence"],
+  [/\bnin\b|national\s*identi(ty|fication)/i, "NIN Card"],
+  [/voter|inec/i, "Voter's Card"],
+  [/staff|employee/i, "Staff ID"],
+  [/residence|permit/i, "Residence Permit"],
+];
+
+export function detectDocumentType(rawText: string): string | undefined {
+  for (const [re, label] of DOC_TYPE_HINTS) if (re.test(rawText)) return label;
+  return undefined;
+}
 
 function titleCase(value: string) {
   return value
@@ -33,7 +55,7 @@ function nameFromMrz(field: string) {
 
 /** Extract the MRZ from raw OCR text and decode it. Supports TD1, TD2 and TD3. */
 export function parseMrz(rawText: string): ParsedIdentity | null {
-  const candidates = rawText
+  const candidates = normalizeOcr(rawText)
     .toUpperCase()
     .split(/\r?\n/)
     .map(CLEAN)
@@ -45,14 +67,14 @@ export function parseMrz(rawText: string): ParsedIdentity | null {
     const l2 = candidates[i + 1];
     const size = l1.length >= 40 ? 44 : 36;
     if (Math.abs(l1.length - size) > 3 || Math.abs(l2.length - size) > 3) continue;
-    if (!/^[PIACV]/.test(l1)) continue;
+    if (!/^[PIACVD]/.test(l1)) continue;
     const names = nameFromMrz(l1.slice(5));
     const documentNumber = l2.slice(0, 9).replace(/</g, "");
     if (!documentNumber || (!names.lastName && !names.firstName)) continue;
     return {
       ...names,
       documentNumber,
-      documentType: l1.startsWith("P") ? "Nigerian Passport" : undefined,
+      documentType: l1.startsWith("P") ? "Nigerian Passport" : detectDocumentType(rawText) ?? "NIN Card",
       nationality: l2.slice(10, 13).replace(/</g, ""),
       birthDate: l2.slice(13, 19),
       expiryDate: l2.slice(21, 27),
@@ -71,6 +93,7 @@ export function parseMrz(rawText: string): ParsedIdentity | null {
     return {
       ...names,
       documentNumber,
+      documentType: detectDocumentType(rawText) ?? "NIN Card",
       nationality: l2.slice(15, 18).replace(/</g, ""),
       birthDate: l2.slice(0, 6),
       expiryDate: l2.slice(8, 14),
@@ -148,33 +171,61 @@ export function parseCodePayload(raw: string): ParsedIdentity | null {
 
 /** Label-driven extraction for documents without an MRZ (NIN card, staff ID). */
 export function parseLabelledOcr(rawText: string): ParsedIdentity | null {
-  const text = rawText.replace(/\u00a0/g, " ");
+  const text = normalizeOcr(rawText);
   const lines = text
     .split(/\r?\n/)
     .map((l) => l.trim())
     .filter(Boolean);
 
-  const pick = (patterns: RegExp[]) => {
-    for (const p of patterns) {
-      for (const line of lines) {
-        const m = line.match(p);
-        if (m?.[1]) {
-          const value = m[1].replace(/[^A-Za-z' -]/g, "").trim();
-          if (value.length > 1) return value;
-        }
-      }
+  const cleanName = (v: string) =>
+    v
+      .replace(/[^A-Za-z' -]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+
+  /** Match "Label: value" on the same line, else take the next non-label line. */
+  const pick = (label: RegExp) => {
+    for (let i = 0; i < lines.length; i++) {
+      const m = lines[i].match(new RegExp(`${label.source}\\s*[:.\\-]?\\s*(.*)$`, "i"));
+      if (!m) continue;
+      const inline = cleanName(m[1] ?? "");
+      if (inline.length > 1) return inline;
+      const next = cleanName(lines[i + 1] ?? "");
+      if (next.length > 1) return next;
     }
     return "";
   };
 
-  const lastName = pick([/sur\s*name[:\s]+(.+)/i, /last\s*name[:\s]+(.+)/i]);
-  const firstName = pick([/given\s*names?[:\s]+(.+)/i, /first\s*name[:\s]+(.+)/i]);
+  let lastName = pick(/sur\s*?name|last\s*name|nom|family\s*name/);
+  let firstName = pick(/given\s*names?|first\s*name|fore\s*names?|other\s*names?|pr[ée]noms?/);
 
+  // Fallback: uppercase name-only lines (very common on ID cards without labels).
+  if (!firstName && !lastName) {
+    const capsLines = lines.filter((l) => /^[A-Z][A-Z' -]{3,30}$/.test(l.trim()));
+    if (capsLines.length >= 2) {
+      lastName = cleanName(capsLines[0]);
+      firstName = cleanName(capsLines[1]);
+    } else if (capsLines.length === 1) {
+      const parts = cleanName(capsLines[0]).split(" ");
+      if (parts.length >= 2) {
+        lastName = parts[parts.length - 1];
+        firstName = parts.slice(0, -1).join(" ");
+      }
+    }
+  }
+
+  const labelled = [
+    ...text.matchAll(
+      /\b(?:document|licence|license|passport|card|id|nin)\s*(?:no\.?|number|#)?\s*[:.\-]?\s*([A-Z0-9][A-Z0-9-]{4,19})\b/gi,
+    ),
+  ]
+    .map((m) => m[1])
+    .find((v) => /\d/.test(v));
   const numberMatch =
-    text.match(/(?:document|licence|license|passport|card|id|nin)\s*(?:no|number|#)?[:\s]+([A-Z0-9-]{5,20})/i) ??
-    text.match(/\b([A-Z]{1,3}\d{6,12})\b/) ??
-    text.match(/\b(\d{9,12})\b/);
-  const documentNumber = numberMatch?.[1]?.toUpperCase() ?? "";
+    labelled ??
+    text.match(/\b([A-Z]{1,3}\d{6,12})\b/)?.[1] ??
+    text.match(/\b(\d{9,12})\b/)?.[1];
+  const documentNumber = numberMatch?.toUpperCase() ?? "";
 
   if (!firstName && !lastName && !documentNumber) return null;
   const title = (v: string) =>
@@ -186,11 +237,24 @@ export function parseLabelledOcr(rawText: string): ParsedIdentity | null {
     firstName: title(firstName),
     lastName: title(lastName),
     documentNumber,
+    documentType: detectDocumentType(text),
     source: "ocr",
     confidence: 0.55,
   };
 }
 
 export function parseScannedText(rawText: string): ParsedIdentity | null {
-  return parseMrz(rawText) ?? parseLabelledOcr(rawText);
+  const mrz = parseMrz(rawText);
+  if (mrz && (mrz.firstName || mrz.lastName)) return mrz;
+  const labelled = parseLabelledOcr(rawText);
+  if (mrz && labelled) {
+    return {
+      ...mrz,
+      firstName: mrz.firstName || labelled.firstName,
+      lastName: mrz.lastName || labelled.lastName,
+      documentNumber: mrz.documentNumber || labelled.documentNumber,
+      documentType: mrz.documentType ?? labelled.documentType,
+    };
+  }
+  return mrz ?? labelled;
 }
