@@ -269,6 +269,23 @@ function Reception() {
     setScreen("details");
   }
 
+  /** OCR review accepted: only the four scanned fields are overwritten. */
+  function applyScanResult(scan: IdScanResult) {
+    setDraft((d) => ({
+      ...d,
+      firstName: scan.firstName || d.firstName,
+      lastName: scan.lastName || d.lastName,
+      documentNumber: scan.documentNumber || d.documentNumber,
+      documentType: scan.formDocumentType ?? d.documentType,
+    }));
+    toast.success(
+      scan.demo
+        ? "Demonstration record loaded — not extracted from the document"
+        : `Details captured from ${scan.detectedDocumentType} · ${Math.round(scan.confidence * 100)}% confidence`,
+    );
+    setScreen("details");
+  }
+
   /** Pass code or document barcode read at the checkout desk. */
   function matchCheckoutCode(text: string) {
     const code = text.trim().toUpperCase();
