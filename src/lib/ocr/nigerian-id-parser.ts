@@ -89,7 +89,7 @@ export function titleCase(value: string) {
 const TYPE_RULES: Array<{ type: NigerianDocumentType; keywords: RegExp[]; min: number }> = [
   {
     type: "Nigerian Passport",
-    keywords: [/\bPASSPORT\b/, /P<NGA/, /PASSPORT\s*NO/, /GIVEN\s*NAMES/, /\bMRZ\b/],
+    keywords: [/\bPASSPORT\b/, /P<NGA/, /PASSPORT\s*NO/, /\bMRZ\b/],
     min: 1,
   },
   {
@@ -107,6 +107,7 @@ const TYPE_RULES: Array<{ type: NigerianDocumentType; keywords: RegExp[]; min: n
     type: "Nigerian NIN",
     keywords: [
       /NATIONAL\s*IDENTITY\s*MANAGEMENT/,
+      /NATIONAL\s*IDENTITY\s*CARD/,
       /\bNIMC\b/,
       /NATIONAL\s*IDENTIFICATION\s*NUMBER/,
       /\bNIN\b/,
