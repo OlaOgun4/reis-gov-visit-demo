@@ -235,6 +235,75 @@ function extractNames(text: NormalisedText) {
   return { firstName: titleCase(firstName), lastName: titleCase(lastName) };
 }
 
+/* ------------------------------------------------- licence-specific names */
+
+/** Lines that are pure ID-card boilerplate / non-name rows on an FRSC licence. */
+const LICENCE_NOISE =
+  /FEDERAL|REPUBLIC|NIGERIA|FRSC|ROAD\s*SAFETY|CORPS|LICEN[CS]E|DRIVER|PERMIT|ISSUE|EXPIR|CLASS|BLOOD|HEIGHT|ADDRESS|SEX|MALE|FEMALE|DATE|BIRTH|PLACE|STATE|LGA|NATIONALITY|SIGNATURE|AUTHORITY|RESTRICTION|CONDITION/;
+
+function isLicenceNameLine(rawLine: string) {
+  const stripped = rawLine.replace(/^\s*\d{1,2}\s*[.)\-:]\s*/, "");
+  // FRSC rows are printed in caps; require the OCR line to be caps-dominant.
+  const letters = stripped.replace(/[^A-Za-z]/g, "");
+  if (letters.length < 2) return false;
+  const upperRatio = letters.replace(/[^A-Z]/g, "").length / letters.length;
+  if (upperRatio < 0.7) return false;
+  if (/\d{3,}/.test(stripped)) return false;
+  if (LICENCE_NOISE.test(stripped.toUpperCase())) return false;
+  return looksLikeName(cleanNameValue(stripped));
+}
+
+/**
+ * FRSC licences print surname above given names. When the "1."/"2." row markers
+ * are lost by OCR, recover ordering from the nearest surname/given-name labels,
+ * falling back to the caps-line structure (first caps name row = surname).
+ */
+function licenceStructuralNames(text: NormalisedText) {
+  let lastName = "";
+  let firstName = "";
+
+  // 1) Label rows that carry no inline value — the value sits on a later line.
+  const nextNameLine = (start: number) => {
+    for (let j = start; j < Math.min(start + 3, text.lines.length); j++) {
+      if (isLicenceNameLine(text.lines[j])) return cleanNameValue(text.lines[j].replace(/^\s*\d{1,2}\s*[.)\-:]\s*/, ""));
+    }
+    return "";
+  };
+  for (let i = 0; i < text.upperLines.length; i++) {
+    const line = text.upperLines[i];
+    if (!lastName && SURNAME_LABEL.test(line)) lastName = nextNameLine(i + 1);
+    if (!firstName && FIRSTNAME_LABEL.test(line)) firstName = nextNameLine(i + 1);
+  }
+
+  // 2) Structural fallback: ordered caps name rows, surname first.
+  if (!firstName || !lastName) {
+    const rows: string[] = [];
+    for (const line of text.lines) {
+      if (!isLicenceNameLine(line)) continue;
+      const v = cleanNameValue(line.replace(/^\s*\d{1,2}\s*[.)\-:]\s*/, ""));
+      if (v && !rows.includes(v)) rows.push(v);
+    }
+    const free = rows.filter((r) => r !== firstName && r !== lastName);
+    if (!lastName && !firstName) {
+      if (free.length >= 2) {
+        lastName = free[0];
+        firstName = free[1];
+      } else if (free.length === 1) {
+        const split = splitCombined(free[0]);
+        if (split) {
+          lastName = split.lastName;
+          firstName = split.firstName;
+        } else lastName = free[0];
+      }
+    } else if (free.length) {
+      if (!lastName) lastName = free[0];
+      else if (!firstName) firstName = free[0];
+    }
+  }
+
+  return { firstName: titleCase(firstName), lastName: titleCase(lastName) };
+}
+
 /** Grab a value near a label, searching the same line and the following one. */
 function nearLabel(text: NormalisedText, label: RegExp, pattern: RegExp): string {
   for (let i = 0; i < text.upperLines.length; i++) {
@@ -325,6 +394,11 @@ export function parseNigerianId(rawText: string): ExtractedIdentity {
 
   const mrz = parseMrz(text.raw);
   let { firstName, lastName } = extractNames(text);
+  if (type === "Nigerian Driver's Licence" && (!firstName || !lastName)) {
+    const structural = licenceStructuralNames(text);
+    if (!firstName) firstName = structural.firstName;
+    if (!lastName) lastName = structural.lastName;
+  }
   if (!firstName && mrz?.firstName) firstName = titleCase(mrz.firstName);
   if (!lastName && mrz?.lastName) lastName = titleCase(mrz.lastName);
 
