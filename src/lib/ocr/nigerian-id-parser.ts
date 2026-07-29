@@ -433,7 +433,27 @@ export function parseNigerianId(rawText: string): ExtractedIdentity {
   const { type, matched } = detectDocumentType(text);
 
   const mrz = parseMrz(text.raw);
-  let { firstName, lastName } = extractNames(text);
+  let firstName = "";
+  let lastName = "";
+  if (type === "Nigerian Passport") {
+    // Labels first, then the positional data-page layout, before generic guessing.
+    lastName = titleCase(valueForLabel(text, SURNAME_LABEL));
+    firstName = titleCase(valueForLabel(text, FIRSTNAME_LABEL));
+    if (!firstName || !lastName) {
+      const structural = passportStructuralNames(text);
+      if (!lastName) lastName = structural.lastName;
+      if (!firstName) firstName = structural.firstName;
+    }
+    if (!firstName && mrz?.firstName) firstName = titleCase(mrz.firstName);
+    if (!lastName && mrz?.lastName) lastName = titleCase(mrz.lastName);
+    if (!firstName || !lastName) {
+      const generic = extractNames(text);
+      if (!lastName) lastName = generic.lastName;
+      if (!firstName) firstName = generic.firstName;
+    }
+  } else {
+    ({ firstName, lastName } = extractNames(text));
+  }
   if (type === "Nigerian Driver's Licence" && (!firstName || !lastName)) {
     const structural = licenceStructuralNames(text);
     if (!firstName) firstName = structural.firstName;
