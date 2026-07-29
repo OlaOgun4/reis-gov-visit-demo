@@ -58,7 +58,7 @@ function fixDigits(value: string) {
 }
 
 const NAME_STOPWORDS =
-  /FEDERAL|REPUBLIC|NIGERIA|NATIONAL|IDENTITY|IDENTIFICATION|COMMISSION|MANAGEMENT|NIMC|INEC|FRSC|CARD|SLIP|PASSPORT|LICEN[CS]E|VOTER|AUTHORITY|MINISTRY|GOVERNMENT|DATE|BIRTH|SEX|MALE|FEMALE|EXPIRY|ISSUE|ADDRESS|NUMBER|SIGNATURE|HOLDER|STATE|ORIGIN|NATIONALITY|TRACKING|BLOOD|HEIGHT|CLASS|OCCUPATION|SURNAME|GIVEN|FORENAME|FIRST\s*NAME|MIDDLE|OTHER\s*NAMES?/;
+  /FEDERAL|REPUBLIC|NIGERIA|NATIONAL|IDENTITY|IDENTIFICATION|COMMISSION|MANAGEMENT|NIMC|INEC|FRSC|CARD|SLIP|PASSPORT|LICEN[CS]E|VOTER|AUTHORITY|MINISTRY|GOVERNMENT|DATE|BIRTH|SEX|MALE|FEMALE|EXPIRY|ISSUE|ADDRESS|NUMBER|SIGNATURE|HOLDER|STATE|ORIGIN|NATIONALITY|TRACKING|BLOOD|HEIGHT|CLASS|OCCUPATION|SURNAME|GIVEN|FORENAME|FIRST\s*NAME|MIDDLE|OTHER\s*NAMES?|^NOMS?$|^PRENOMS?$|^APELLIDOS?$/;
 
 function cleanNameValue(value: string) {
   return value
@@ -70,7 +70,10 @@ function cleanNameValue(value: string) {
 function looksLikeName(value: string) {
   const v = value.trim();
   if (v.length < 2 || v.length > 40) return false;
-  if (NAME_STOPWORDS.test(v.toUpperCase())) return false;
+  const u = v.toUpperCase();
+  if (NAME_STOPWORDS.test(u)) return false;
+  // Bilingual label fragments left over from "SURNAME/NOM" style rows.
+  if (/^(NOMS?|PRENOMS?|PRENOM|NOMBRES?)(\s|$)/.test(u)) return false;
   return /^[A-Za-z][A-Za-z' -]+$/.test(v);
 }
 
@@ -86,7 +89,7 @@ export function titleCase(value: string) {
 const TYPE_RULES: Array<{ type: NigerianDocumentType; keywords: RegExp[]; min: number }> = [
   {
     type: "Nigerian Passport",
-    keywords: [/\bPASSPORT\b/, /P<NGA/, /PASSPORT\s*NO/, /GIVEN\s*NAMES/, /\bMRZ\b/],
+    keywords: [/\bPASSPORT\b/, /P<NGA/, /PASSPORT\s*NO/, /\bMRZ\b/],
     min: 1,
   },
   {
@@ -104,6 +107,7 @@ const TYPE_RULES: Array<{ type: NigerianDocumentType; keywords: RegExp[]; min: n
     type: "Nigerian NIN",
     keywords: [
       /NATIONAL\s*IDENTITY\s*MANAGEMENT/,
+      /NATIONAL\s*IDENTITY\s*CARD/,
       /\bNIMC\b/,
       /NATIONAL\s*IDENTIFICATION\s*NUMBER/,
       /\bNIN\b/,
@@ -145,7 +149,12 @@ function valueForLabel(text: NormalisedText, label: RegExp): string {
   for (let i = 0; i < text.upperLines.length; i++) {
     const m = text.upperLines[i].match(new RegExp(`(?:^|\\b)(?:${label.source})\\b\\s*[:.\\-]?\\s*(.*)$`));
     if (!m) continue;
-    const inline = cleanNameValue(m[1] ?? "");
+    // Drop bilingual label halves: "SURNAME/NOM", "GIVEN NAMES / PRENOMS".
+    const tail = (m[1] ?? "").replace(
+      /^\s*[\/|]\s*(NOMS?|PRENOMS?|APELLIDOS?|NOMBRES?)\b\s*[:.\-]?\s*/i,
+      "",
+    );
+    const inline = cleanNameValue(tail);
     if (inline.length > 1 && looksLikeName(inline)) return inline;
     for (let j = i + 1; j < Math.min(i + 3, text.lines.length); j++) {
       const next = cleanNameValue(text.lines[j]);
@@ -345,6 +354,72 @@ function passportStructuralNames(text: NormalisedText) {
   return { lastName: titleCase(rows[0] ?? ""), firstName: titleCase(rows[1] ?? "") };
 }
 
+/* ------------------------------------------------------- NIMC / NIN card */
+
+const NIN_NOISE =
+  /FEDERAL|REPUBLIC|NIGERIA|NATIONAL|IDENTITY|IDENTIFICATION|MANAGEMENT|COMMISSION|NIMC|CARD|SLIP|NUMBER|TRACKING|DATE|BIRTH|ISSUE|EXPIR|SEX|MALE|FEMALE|NATIONALITY|SIGNATURE|ADDRESS|STATE|LGA|TOWN|HEIGHT|BLOOD|OCCUPATION|SURNAME|GIVEN|MIDDLE|OTHER|FIRST|NOMS?|PRENOMS?|WWW|GOV\.?NG/;
+
+/** A caps-dominant printed row on a NIN card/slip that could carry a name. */
+function isNinNameLine(rawLine: string) {
+  const v = cleanNameValue(rawLine);
+  if (!v || v.replace(/[^A-Za-z]/g, "").length < 3) return false;
+  if (/\d/.test(rawLine)) return false;
+  if (NIN_NOISE.test(v.toUpperCase())) return false;
+  const letters = v.replace(/[^A-Za-z]/g, "");
+  const upperRatio = letters.replace(/[^A-Z]/g, "").length / letters.length;
+  if (upperRatio < 0.6) return false;
+  return looksLikeName(v);
+}
+
+/**
+ * NIMC cards and NIN slips print, in order: surname row, then given-names row,
+ * usually under bilingual labels that OCR frequently mangles. Recover the rows
+ * from the labels where present, otherwise positionally.
+ */
+function ninStructuralNames(text: NormalisedText) {
+  let lastName = "";
+  let firstName = "";
+
+  const nextNameLine = (start: number) => {
+    for (let j = start; j < Math.min(start + 3, text.lines.length); j++) {
+      if (isNinNameLine(text.lines[j])) return cleanNameValue(text.lines[j]);
+    }
+    return "";
+  };
+  for (let i = 0; i < text.upperLines.length; i++) {
+    const line = text.upperLines[i];
+    if (!lastName && SURNAME_LABEL.test(line)) lastName = nextNameLine(i + 1);
+    if (!firstName && FIRSTNAME_LABEL.test(line)) firstName = nextNameLine(i + 1);
+  }
+
+  if (!firstName || !lastName) {
+    const rows: string[] = [];
+    for (const line of text.lines) {
+      if (!isNinNameLine(line)) continue;
+      const v = cleanNameValue(line);
+      if (v && !rows.includes(v)) rows.push(v);
+    }
+    const free = rows.filter((r) => r !== firstName && r !== lastName);
+    if (!lastName && !firstName) {
+      if (free.length >= 2) {
+        lastName = free[0];
+        firstName = free[1];
+      } else if (free.length === 1) {
+        const split = splitCombined(free[0]);
+        if (split) {
+          lastName = split.lastName;
+          firstName = split.firstName;
+        } else lastName = free[0];
+      }
+    } else if (free.length) {
+      if (!lastName) lastName = free[0];
+      else if (!firstName) firstName = free[0];
+    }
+  }
+
+  return { firstName: titleCase(firstName), lastName: titleCase(lastName) };
+}
+
 function nearLabel(text: NormalisedText, label: RegExp, pattern: RegExp): string {
   for (let i = 0; i < text.upperLines.length; i++) {
     if (!new RegExp(label.source).test(text.upperLines[i])) continue;
@@ -451,11 +526,33 @@ export function parseNigerianId(rawText: string): ExtractedIdentity {
       if (!lastName) lastName = generic.lastName;
       if (!firstName) firstName = generic.firstName;
     }
+  } else if (type === "Nigerian NIN" || type === "Nigerian Permanent Voter Card") {
+    // Bilingual labels first, then the printed row order, then generic guessing.
+    lastName = titleCase(valueForLabel(text, SURNAME_LABEL));
+    firstName = titleCase(valueForLabel(text, FIRSTNAME_LABEL));
+    if (!firstName || !lastName) {
+      const structural = ninStructuralNames(text);
+      if (!lastName) lastName = structural.lastName;
+      if (!firstName) firstName = structural.firstName;
+    }
+    if (!firstName || !lastName) {
+      const generic = extractNames(text);
+      if (!lastName) lastName = generic.lastName;
+      if (!firstName) firstName = generic.firstName;
+    }
   } else {
     ({ firstName, lastName } = extractNames(text));
   }
   if (type === "Nigerian Driver's Licence" && (!firstName || !lastName)) {
     const structural = licenceStructuralNames(text);
+    if (!firstName) firstName = structural.firstName;
+    if (!lastName) lastName = structural.lastName;
+  }
+  if (
+    (type === "Nigerian NIN" || type === "Nigerian Permanent Voter Card") &&
+    (!firstName || !lastName)
+  ) {
+    const structural = ninStructuralNames(text);
     if (!firstName) firstName = structural.firstName;
     if (!lastName) lastName = structural.lastName;
   }
