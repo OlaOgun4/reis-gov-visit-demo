@@ -353,6 +353,72 @@ function passportStructuralNames(text: NormalisedText) {
   return { lastName: titleCase(rows[0] ?? ""), firstName: titleCase(rows[1] ?? "") };
 }
 
+/* ------------------------------------------------------- NIMC / NIN card */
+
+const NIN_NOISE =
+  /FEDERAL|REPUBLIC|NIGERIA|NATIONAL|IDENTITY|IDENTIFICATION|MANAGEMENT|COMMISSION|NIMC|CARD|SLIP|NUMBER|TRACKING|DATE|BIRTH|ISSUE|EXPIR|SEX|MALE|FEMALE|NATIONALITY|SIGNATURE|ADDRESS|STATE|LGA|TOWN|HEIGHT|BLOOD|OCCUPATION|SURNAME|GIVEN|MIDDLE|OTHER|FIRST|NOMS?|PRENOMS?|WWW|GOV\.?NG/;
+
+/** A caps-dominant printed row on a NIN card/slip that could carry a name. */
+function isNinNameLine(rawLine: string) {
+  const v = cleanNameValue(rawLine);
+  if (!v || v.replace(/[^A-Za-z]/g, "").length < 3) return false;
+  if (/\d/.test(rawLine)) return false;
+  if (NIN_NOISE.test(v.toUpperCase())) return false;
+  const letters = v.replace(/[^A-Za-z]/g, "");
+  const upperRatio = letters.replace(/[^A-Z]/g, "").length / letters.length;
+  if (upperRatio < 0.6) return false;
+  return looksLikeName(v);
+}
+
+/**
+ * NIMC cards and NIN slips print, in order: surname row, then given-names row,
+ * usually under bilingual labels that OCR frequently mangles. Recover the rows
+ * from the labels where present, otherwise positionally.
+ */
+function ninStructuralNames(text: NormalisedText) {
+  let lastName = "";
+  let firstName = "";
+
+  const nextNameLine = (start: number) => {
+    for (let j = start; j < Math.min(start + 3, text.lines.length); j++) {
+      if (isNinNameLine(text.lines[j])) return cleanNameValue(text.lines[j]);
+    }
+    return "";
+  };
+  for (let i = 0; i < text.upperLines.length; i++) {
+    const line = text.upperLines[i];
+    if (!lastName && SURNAME_LABEL.test(line)) lastName = nextNameLine(i + 1);
+    if (!firstName && FIRSTNAME_LABEL.test(line)) firstName = nextNameLine(i + 1);
+  }
+
+  if (!firstName || !lastName) {
+    const rows: string[] = [];
+    for (const line of text.lines) {
+      if (!isNinNameLine(line)) continue;
+      const v = cleanNameValue(line);
+      if (v && !rows.includes(v)) rows.push(v);
+    }
+    const free = rows.filter((r) => r !== firstName && r !== lastName);
+    if (!lastName && !firstName) {
+      if (free.length >= 2) {
+        lastName = free[0];
+        firstName = free[1];
+      } else if (free.length === 1) {
+        const split = splitCombined(free[0]);
+        if (split) {
+          lastName = split.lastName;
+          firstName = split.firstName;
+        } else lastName = free[0];
+      }
+    } else if (free.length) {
+      if (!lastName) lastName = free[0];
+      else if (!firstName) firstName = free[0];
+    }
+  }
+
+  return { firstName: titleCase(firstName), lastName: titleCase(lastName) };
+}
+
 function nearLabel(text: NormalisedText, label: RegExp, pattern: RegExp): string {
   for (let i = 0; i < text.upperLines.length; i++) {
     if (!new RegExp(label.source).test(text.upperLines[i])) continue;
