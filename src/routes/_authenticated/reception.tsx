@@ -22,6 +22,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useSession } from "@/hooks/use-session";
 import { DocumentScanner } from "@/components/scanner/document-scanner";
+import { IdScanner, type IdScanResult } from "@/components/scanner/id-scanner";
 import { QrCode } from "@/components/scanner/qr-code";
 import type { ParsedIdentity } from "@/lib/mrz";
 import {
