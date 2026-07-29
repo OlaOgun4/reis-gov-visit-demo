@@ -437,6 +437,10 @@ export type Database = {
         Args: { _dept: string; _user_id: string }
         Returns: boolean
       }
+      can_touch_dept: {
+        Args: { _dept: string; _user_id: string }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
