@@ -22,6 +22,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useSession } from "@/hooks/use-session";
 import { DocumentScanner } from "@/components/scanner/document-scanner";
+import { IdScanner, type IdScanResult } from "@/components/scanner/id-scanner";
 import { QrCode } from "@/components/scanner/qr-code";
 import type { ParsedIdentity } from "@/lib/mrz";
 import {
@@ -121,6 +122,7 @@ function Reception() {
   const { data: session } = useSession();
 
   const [screen, setScreen] = useState<Screen>("home");
+  const [scanMode, setScanMode] = useState<"photo" | "live">("photo");
   const [journey, setJourney] = useState<"walk_in" | "pre_booked">("walk_in");
   const [booking, setBooking] = useState<Booking | null>(null);
   const [draft, setDraft] = useState<Draft>(emptyDraft);
@@ -264,6 +266,23 @@ function Reception() {
     }));
     toast.success(
       `Identity captured from ${identity.source.toUpperCase()} · ${Math.round(identity.confidence * 100)}% confidence`,
+    );
+    setScreen("details");
+  }
+
+  /** OCR review accepted: only the four scanned fields are overwritten. */
+  function applyScanResult(scan: IdScanResult) {
+    setDraft((d) => ({
+      ...d,
+      firstName: scan.firstName || d.firstName,
+      lastName: scan.lastName || d.lastName,
+      documentNumber: scan.documentNumber || d.documentNumber,
+      documentType: scan.formDocumentType ?? d.documentType,
+    }));
+    toast.success(
+      scan.demo
+        ? "Demonstration record loaded — not extracted from the document"
+        : `Details captured from ${scan.detectedDocumentType} · ${Math.round(scan.confidence * 100)}% confidence`,
     );
     setScreen("details");
   }
@@ -608,14 +627,34 @@ function Reception() {
             <Stepper step={1} />
             <h1 className="text-xl font-bold">Scan identity document</h1>
             <p className="text-xs text-muted-foreground">
-              Hold the passport, licence or ID card inside the frame. Reading happens on this device
-              — no images leave the reception desk.
+              Photograph or upload the passport, licence, NIN or voter card. Reading happens on this
+              device — no images leave the reception desk.
             </p>
-            <DocumentScanner
-              mode="document"
-              hint="Passport, driving licence, NIN card or staff ID"
-              onIdentity={applyIdentity}
-            />
+            <div className="grid grid-cols-2 gap-2 rounded-2xl bg-muted p-1">
+              <button
+                type="button"
+                onClick={() => setScanMode("photo")}
+                className={`h-9 rounded-xl text-xs font-bold ${scanMode === "photo" ? "bg-card shadow-card" : "text-muted-foreground"}`}
+              >
+                Photo scan (OCR)
+              </button>
+              <button
+                type="button"
+                onClick={() => setScanMode("live")}
+                className={`h-9 rounded-xl text-xs font-bold ${scanMode === "live" ? "bg-card shadow-card" : "text-muted-foreground"}`}
+              >
+                Live camera / QR
+              </button>
+            </div>
+            {scanMode === "photo" ? (
+              <IdScanner onAccept={applyScanResult} onCancel={() => setScreen("details")} />
+            ) : (
+              <DocumentScanner
+                mode="document"
+                hint="Passport, driving licence, NIN card or staff ID"
+                onIdentity={applyIdentity}
+              />
+            )}
             <Button size="block" variant="secondary" onClick={() => setScreen("details")}>
               Enter manually
             </Button>
