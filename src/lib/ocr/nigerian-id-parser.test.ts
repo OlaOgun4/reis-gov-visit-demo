@@ -34,3 +34,11 @@ test("licence with no labels at all", () => {
   expect(r.lastName).toBe("Ogunde");
   expect(r.firstName).toBe("Femi");
 });
+
+test("passport data page, labels lost by OCR", () => {
+  const r = parseNigerianId(`SINR HERE\nSi NEN IE ee ey\nps)\n|< = Pl, 5\nFEDERAL REPUBLIC OF NIGERIA Passport / Passeport\n= ski\nP NGA 851496242 ~\npy 1\n" TEE ale\nrr\nNENGIMONYUN BUNMI \u2122\nn NIGERIAN 800106076`);
+  console.log(r);
+  expect(r.documentType).toBe("Nigerian Passport");
+  expect(r.firstName).toBe("Nengimonyun Bunmi");
+  expect(r.lastName).toBe("Tee Ale");
+});
