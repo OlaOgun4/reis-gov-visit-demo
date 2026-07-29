@@ -42,3 +42,48 @@ test("passport data page, labels lost by OCR", () => {
   expect(r.firstName).toBe("Nengimonyun Bunmi");
   expect(r.lastName).toBe("Tee Ale");
 });
+
+describe("NIN card names", () => {
+  it("reads bilingual labels with values on the next line", () => {
+    const r = parseNigerianId(
+      [
+        "FEDERAL REPUBLIC OF NIGERIA",
+        "NATIONAL IDENTITY CARD",
+        "Surname/Nom",
+        "OKAFOR",
+        "Given Names/Prenoms",
+        "ADEBAYO CHUKWU",
+        "NIN 12345678901",
+      ].join("\n"),
+    );
+    expect(r.documentType).toBe("Nigerian NIN");
+    expect(r.lastName).toBe("Okafor");
+    expect(r.firstName).toBe("Adebayo Chukwu");
+    expect(r.documentNumber).toBe("12345678901");
+  });
+
+  it("recovers names positionally when labels are lost", () => {
+    const r = parseNigerianId(
+      [
+        "FEDERAL REPUBLIC OF NIGERIA",
+        "NATIONAL IDENTITY MANAGEMENT COMMISSION",
+        "BELLO",
+        "MUSA IBRAHIM",
+        "Date of Birth 01/02/1990",
+        "National Identification Number",
+        "22233344455",
+      ].join("\n"),
+    );
+    expect(r.lastName).toBe("Bello");
+    expect(r.firstName).toBe("Musa Ibrahim");
+    expect(r.documentNumber).toBe("22233344455");
+  });
+
+  it("does not return bilingual label halves as names", () => {
+    const r = parseNigerianId(
+      ["NIMC", "SURNAME/NOM: ADEYEMI", "GIVEN NAMES/PRENOMS: TUNDE", "NIN: 99988877766"].join("\n"),
+    );
+    expect(r.lastName).toBe("Adeyemi");
+    expect(r.firstName).toBe("Tunde");
+  });
+});
