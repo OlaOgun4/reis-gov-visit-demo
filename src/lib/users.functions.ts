@@ -80,29 +80,74 @@ export const createStaffUser = createServerFn({ method: "POST" })
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
+    // Reject unknown departments up front (invalid department assignment).
+    if (data.department_id) {
+      const { data: dept } = await supabaseAdmin
+        .from("departments")
+        .select("id")
+        .eq("id", data.department_id)
+        .maybeSingle();
+      if (!dept) throw new Error("That department does not exist.");
+    }
+
+    const actorName =
+      (
+        await supabaseAdmin
+          .from("profiles")
+          .select("full_name")
+          .eq("id", (context as unknown as SupabaseCtx).userId)
+          .maybeSingle()
+      ).data?.full_name ?? "System";
+
+    const audit = async (status: string, ref: string | null, reason?: string) => {
+      await supabaseAdmin.from("audit_logs").insert({
+        actor_name: actorName,
+        actor_id: (context as unknown as SupabaseCtx).userId,
+        event: `Create staff account (${data.role}${data.department_id ? `, dept ${data.department_id}` : ""})${reason ? ` — ${reason}` : ""}`,
+        record_ref: ref,
+        status,
+      });
+    };
+
     const { data: created, error } = await supabaseAdmin.auth.admin.createUser({
       email: data.email,
       password: data.password,
       email_confirm: true,
       user_metadata: { full_name: data.full_name, job_title: data.job_title },
     });
-    if (error) throw new Error(error.message);
+    if (error) {
+      const safe = /already|exists|registered/i.test(error.message)
+        ? "An account with that email address already exists."
+        : "Could not create the account.";
+      await audit("Failed", null, safe);
+      throw new Error(safe);
+    }
     const userId = created.user!.id;
 
-    const { error: pErr } = await supabaseAdmin.from("profiles").upsert({
-      id: userId,
-      full_name: data.full_name,
-      job_title: data.job_title || "Reception Officer",
-      department_id: data.department_id || null,
-    });
-    if (pErr) throw new Error(pErr.message);
+    try {
+      const { error: pErr } = await supabaseAdmin.from("profiles").upsert({
+        id: userId,
+        full_name: data.full_name,
+        job_title: data.job_title || "Reception Officer",
+        department_id: data.department_id || null,
+      });
+      if (pErr) throw new Error(pErr.message);
 
-    await supabaseAdmin.from("user_roles").delete().eq("user_id", userId);
-    const { error: rErr } = await supabaseAdmin
-      .from("user_roles")
-      .insert({ user_id: userId, role: data.role });
-    if (rErr) throw new Error(rErr.message);
+      await supabaseAdmin.from("user_roles").delete().eq("user_id", userId);
+      const { error: rErr } = await supabaseAdmin
+        .from("user_roles")
+        .insert({ user_id: userId, role: data.role });
+      if (rErr) throw new Error(rErr.message);
+    } catch (e) {
+      // Compensating cleanup: never leave a half-created account behind.
+      await supabaseAdmin.from("user_roles").delete().eq("user_id", userId);
+      await supabaseAdmin.from("profiles").delete().eq("id", userId);
+      await supabaseAdmin.auth.admin.deleteUser(userId);
+      await audit("Failed", null, "Profile or role assignment failed; account rolled back.");
+      throw new Error("Could not complete the account setup. No account was created.");
+    }
 
+    await audit("Success", userId);
     return { id: userId };
   });
 
