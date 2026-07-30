@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Pencil, Plus, ShieldCheck } from "lucide-react";
@@ -10,7 +9,7 @@ import {
   deleteStaffUser,
   listStaff,
   updateStaffUser,
-} from "@/lib/users.functions";
+} from "@/lib/users.api";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -90,10 +89,10 @@ function UsersPage() {
   });
   const [search, setSearch] = useState("");
 
-  const createStaff = useServerFn(createStaffUser);
-  const fetchStaff = useServerFn(listStaff);
-  const saveStaff = useServerFn(updateStaffUser);
-  const removeStaff = useServerFn(deleteStaffUser);
+  const createStaff = createStaffUser;
+  const fetchStaff = listStaff;
+  const saveStaff = updateStaffUser;
+  const removeStaff = deleteStaffUser;
   const options = assignableRoles(session);
 
   const departments = useQuery({
@@ -116,14 +115,12 @@ function UsersPage() {
   const create = useMutation({
     mutationFn: async () => {
       await createStaff({
-        data: {
-          email: addForm.email.trim(),
-          password: addForm.password,
-          full_name: addForm.full_name.trim(),
-          job_title: addForm.job_title.trim(),
-          department_id: addForm.department_id || null,
-          role: addForm.role,
-        },
+        email: addForm.email.trim(),
+        password: addForm.password,
+        full_name: addForm.full_name.trim(),
+        job_title: addForm.job_title.trim(),
+        department_id: addForm.department_id || null,
+        role: addForm.role,
       });
       await logAudit(`Staff account created · ${roleLabel(addForm.role)}`, addForm.full_name);
     },
@@ -148,17 +145,15 @@ function UsersPage() {
     mutationFn: async () => {
       if (!editing) return;
       await saveStaff({
-        data: {
-          id: editing.id,
-          full_name: form.full_name.trim(),
-          job_title: form.job_title.trim(),
-          department_id: form.department_id || null,
-          role: form.role,
-          ...(form.email.trim() && form.email.trim() !== editing.email
-            ? { email: form.email.trim() }
-            : {}),
-          ...(form.password ? { password: form.password } : {}),
-        },
+        id: editing.id,
+        full_name: form.full_name.trim(),
+        job_title: form.job_title.trim(),
+        department_id: form.department_id || null,
+        role: form.role,
+        ...(form.email.trim() && form.email.trim() !== editing.email
+          ? { email: form.email.trim() }
+          : {}),
+        ...(form.password ? { password: form.password } : {}),
       });
       await logAudit(`Staff account updated · ${roleLabel(form.role)}`, form.full_name);
     },
@@ -175,7 +170,7 @@ function UsersPage() {
 
   const remove = useMutation({
     mutationFn: async (row: StaffRow) => {
-      await removeStaff({ data: { id: row.id } });
+      await removeStaff({ id: row.id });
       await logAudit("Staff account deleted", row.full_name);
     },
     onSuccess: () => {
