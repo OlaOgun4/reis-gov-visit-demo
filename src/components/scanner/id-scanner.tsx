@@ -1,12 +1,13 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   AlertTriangle,
   Camera,
   CheckCircle2,
   ChevronDown,
   Loader2,
+  RefreshCw,
   RotateCcw,
-  Upload,
+  ScanLine,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -21,11 +22,9 @@ import {
   type ExtractedIdentity,
   type NigerianDocumentType,
 } from "@/lib/ocr/nigerian-id-parser";
-import { MAX_IMAGE_BYTES, isSupportedImage } from "@/lib/ocr/image-preprocessor";
 import { runIdOcr, type OcrProgress } from "@/lib/ocr/ocr-service";
 
 const DEBUG = import.meta.env.VITE_OCR_DEBUG === "true";
-const DEMO_FALLBACK = import.meta.env.VITE_OCR_DEMO_FALLBACK === "true";
 
 const DOC_TYPES: NigerianDocumentType[] = [
   "Nigerian NIN",
@@ -46,10 +45,24 @@ export interface IdScanResult {
   demo: boolean;
 }
 
-type Phase = "choose" | "preview" | "processing" | "review" | "failed";
+type Phase = "camera" | "preview" | "processing" | "review" | "failed";
 
 const selectClass =
   "mt-1.5 h-11 w-full rounded-xl border border-input bg-background px-3 text-sm font-medium";
+
+function fieldConfidence(value: string, overall: number) {
+  if (!value.trim()) return 0;
+  return Math.max(0.4, Math.min(1, overall));
+}
+
+function ConfidenceBadge({ value, overall }: { value: string; overall: number }) {
+  const score = fieldConfidence(value, overall);
+  const pct = Math.round(score * 100);
+  if (!score) return <Badge variant="destructive">Not found</Badge>;
+  return (
+    <Badge variant={score >= 0.8 ? "success" : score >= 0.6 ? "gold" : "secondary"}>{pct}%</Badge>
+  );
+}
 
 export function IdScanner({
   onAccept,
@@ -58,33 +71,86 @@ export function IdScanner({
   onAccept: (result: IdScanResult) => void;
   onCancel?: () => void;
 }) {
-  const cameraRef = useRef<HTMLInputElement | null>(null);
-  const uploadRef = useRef<HTMLInputElement | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const objectUrlRef = useRef<string | null>(null);
 
-  const [phase, setPhase] = useState<Phase>("choose");
+  const [phase, setPhase] = useState<Phase>("camera");
+  const [facing, setFacing] = useState<"environment" | "user">("environment");
+  const [cameraReady, setCameraReady] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>("");
   const [progress, setProgress] = useState<OcrProgress | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ExtractedIdentity | null>(null);
-  const [demo, setDemo] = useState(false);
   const [showRaw, setShowRaw] = useState(false);
+  const demo = false;
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [documentNumber, setDocumentNumber] = useState("");
   const [documentType, setDocumentType] = useState<NigerianDocumentType>("Unrecognised Nigerian ID");
 
+  const stopCamera = useCallback(() => {
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current = null;
+    setCameraReady(false);
+  }, []);
+
+  // Live viewfinder via MediaDevices — no file picker is used anywhere.
+  useEffect(() => {
+    if (phase !== "camera") return;
+    let cancelled = false;
+    (async () => {
+      setError(null);
+      try {
+        if (!navigator.mediaDevices?.getUserMedia) {
+          throw new Error("This device or browser does not expose a camera to the app.");
+        }
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: facing, width: { ideal: 1920 }, height: { ideal: 1080 } },
+          audio: false,
+        });
+        if (cancelled) {
+          stream.getTracks().forEach((t) => t.stop());
+          return;
+        }
+        streamRef.current = stream;
+        const video = videoRef.current;
+        if (video) {
+          video.srcObject = stream;
+          await video.play().catch(() => undefined);
+        }
+        setCameraReady(true);
+      } catch (err) {
+        if (cancelled) return;
+        setError(
+          err instanceof Error && err.name === "NotAllowedError"
+            ? "Camera permission was denied. Allow camera access in the browser to scan documents."
+            : err instanceof Error
+              ? err.message
+              : "Camera unavailable",
+        );
+      }
+    })();
+    return () => {
+      cancelled = true;
+      stopCamera();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, facing]);
+
   // Nothing is persisted: revoke the in-memory image when the scanner unmounts.
   useEffect(
     () => () => {
       if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
+      stopCamera();
     },
-    [],
+    [stopCamera],
   );
 
-  function reset(to: Phase = "choose") {
+  function reset(to: Phase = "camera") {
     if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
     objectUrlRef.current = null;
     setFile(null);
@@ -92,28 +158,37 @@ export function IdScanner({
     setResult(null);
     setProgress(null);
     setError(null);
-    setDemo(false);
     setShowRaw(false);
     setPhase(to);
   }
 
-  function onPick(e: React.ChangeEvent<HTMLInputElement>) {
-    const picked = e.target.files?.[0];
-    e.target.value = "";
-    if (!picked) return;
-    if (!isSupportedImage(picked)) {
-      setError("That file type is not supported. Choose a photo (JPG, PNG or HEIC).");
+  /** Snapshot the live video frame into an image File for the OCR pipeline. */
+  async function capture() {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    if (!video || !canvas || !video.videoWidth) {
+      setError("Camera frame not ready yet — hold still and try again.");
       return;
     }
-    if (picked.size > MAX_IMAGE_BYTES) {
-      setError("That image is too large. Take a new photo or choose a smaller file.");
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise<Blob | null>((res) =>
+      canvas.toBlob((b) => res(b), "image/jpeg", 0.95),
+    );
+    if (!blob) {
+      setError("The camera frame could not be captured. Try again.");
       return;
     }
+    const captured = new File([blob], `id-capture-${Date.now()}.jpg`, { type: "image/jpeg" });
     if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
-    const url = URL.createObjectURL(picked);
+    const url = URL.createObjectURL(captured);
     objectUrlRef.current = url;
+    stopCamera();
     setError(null);
-    setFile(picked);
+    setFile(captured);
     setPreviewUrl(url);
     setPhase("preview");
   }
@@ -131,7 +206,6 @@ export function IdScanner({
       setLastName(out.lastName);
       setDocumentNumber(out.documentNumber);
       setDocumentType(out.documentType);
-      setDemo(false);
       setPhase(hasAnyResult(out) ? "review" : "failed");
     } catch (err) {
       setError(
@@ -143,15 +217,6 @@ export function IdScanner({
     }
   }
 
-  function loadDemoRecord() {
-    setFirstName("Adebayo");
-    setLastName("Okafor");
-    setDocumentNumber("12345678901");
-    setDocumentType("Nigerian NIN");
-    setDemo(true);
-    setPhase("review");
-  }
-
   function accept() {
     onAccept({
       firstName: firstName.trim(),
@@ -159,7 +224,7 @@ export function IdScanner({
       formDocumentType: FORM_DOCUMENT_TYPE[documentType],
       detectedDocumentType: documentType,
       documentNumber: documentNumber.trim(),
-      confidence: demo ? 0 : (result?.confidence ?? 0),
+      confidence: result?.confidence ?? 0,
       demo,
     });
   }
@@ -169,36 +234,53 @@ export function IdScanner({
     !lastName.trim() && "surname",
     !documentNumber.trim() && "document number",
   ].filter(Boolean) as string[];
-  const success = result ? isHighConfidence(result) && missing.length === 0 && !demo : false;
+  const success = result ? isHighConfidence(result) && missing.length === 0 : false;
+  const overall = result?.confidence ?? 0;
 
   return (
     <div className="space-y-3">
-      <input
-        ref={cameraRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        className="hidden"
-        onChange={onPick}
-      />
-      <input ref={uploadRef} type="file" accept="image/*" className="hidden" onChange={onPick} />
+      <canvas ref={canvasRef} className="hidden" />
 
-      {phase === "choose" && (
+      {phase === "camera" && (
         <div className="space-y-2.5">
-          <div className="grid place-items-center gap-2 rounded-3xl border-2 border-dashed border-primary/40 bg-muted/40 p-8 text-center">
-            <Camera className="size-8 text-primary" />
-            <p className="text-sm font-semibold">Scan a Nigerian identity document</p>
-            <p className="text-xs text-muted-foreground">
-              NIN slip or card, driver&apos;s licence, passport or voter card. The image is read on
-              this device and never stored.
-            </p>
+          <div className="relative overflow-hidden rounded-3xl border-2 border-dashed border-primary/40 bg-foreground/90">
+            <video
+              ref={videoRef}
+              playsInline
+              muted
+              autoPlay
+              className="h-64 w-full object-cover"
+              aria-label="Live identity document camera"
+            />
+            <div className="pointer-events-none absolute inset-4 rounded-2xl border-2 border-primary-foreground/60" />
+            <div className="pointer-events-none absolute inset-x-4 bottom-4">
+              <Badge variant={cameraReady ? "success" : "secondary"}>
+                {cameraReady ? "Camera live" : "Starting camera…"}
+              </Badge>
+            </div>
+            {!cameraReady && (
+              <div className="absolute inset-0 grid place-items-center text-primary-foreground">
+                <ScanLine className="size-10 animate-pulse" />
+              </div>
+            )}
           </div>
-          <Button size="block" onClick={() => cameraRef.current?.click()}>
-            <Camera /> Take photo
-          </Button>
-          <Button size="block" variant="secondary" onClick={() => uploadRef.current?.click()}>
-            <Upload /> Upload ID image
-          </Button>
+          <p className="text-xs text-muted-foreground">
+            Fill the frame with the data page of the NIN card, driver&apos;s licence, passport or
+            voter card. The frame is read on this device and never stored.
+          </p>
+          <div className="flex gap-2">
+            <Button className="flex-1" disabled={!cameraReady} onClick={capture}>
+              <Camera /> Capture frame
+            </Button>
+            <Button
+              variant="secondary"
+              size="icon"
+              aria-label="Switch camera"
+              onClick={() => setFacing((f) => (f === "environment" ? "user" : "environment"))}
+            >
+              <RefreshCw />
+            </Button>
+          </div>
           {onCancel && (
             <Button size="block" variant="ghost" onClick={onCancel}>
               <X /> Cancel
@@ -234,7 +316,7 @@ export function IdScanner({
               <Button size="block" onClick={usePhoto}>
                 <CheckCircle2 /> Use photo
               </Button>
-              <Button size="block" variant="secondary" onClick={() => reset("choose")}>
+              <Button size="block" variant="secondary" onClick={() => reset("camera")}>
                 <RotateCcw /> Retake
               </Button>
               {onCancel && (
@@ -242,7 +324,7 @@ export function IdScanner({
                   size="block"
                   variant="ghost"
                   onClick={() => {
-                    reset("choose");
+                    reset("camera");
                     onCancel();
                   }}
                 >
@@ -265,17 +347,9 @@ export function IdScanner({
                 "No readable text was found. Fill the frame with the data page, avoid glare and shadows, then try again."}
             </p>
           </div>
-          <Button size="block" onClick={() => cameraRef.current?.click()}>
-            <Camera /> Retake photo
+          <Button size="block" onClick={() => reset("camera")}>
+            <Camera /> Reopen camera and retake
           </Button>
-          <Button size="block" variant="secondary" onClick={() => uploadRef.current?.click()}>
-            <Upload /> Upload another image
-          </Button>
-          {DEMO_FALLBACK && result && (
-            <Button size="block" variant="outline" onClick={loadDemoRecord}>
-              Load demonstration result
-            </Button>
-          )}
           {onCancel && (
             <Button size="block" variant="ghost" onClick={onCancel}>
               <X /> Cancel scan
@@ -301,11 +375,7 @@ export function IdScanner({
             </div>
           )}
 
-          {demo ? (
-            <div className="rounded-2xl border border-gold/50 bg-gold/10 p-3 text-xs font-bold">
-              Demonstration fallback data — not extracted from the document
-            </div>
-          ) : success ? (
+          {success ? (
             <div className="flex items-center gap-2 rounded-2xl border border-success/40 bg-success/10 p-3 text-sm font-bold text-success">
               <CheckCircle2 className="size-4" /> ID details extracted successfully
             </div>
@@ -320,16 +390,15 @@ export function IdScanner({
 
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="secondary">{documentType}</Badge>
-            {!demo && (
-              <Badge variant="gold">
-                Confidence {Math.round((result?.confidence ?? 0) * 100)}%
-              </Badge>
-            )}
+            <Badge variant="gold">Overall confidence {Math.round(overall * 100)}%</Badge>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label>First name</Label>
+              <div className="flex items-center justify-between gap-2">
+                <Label>First name</Label>
+                <ConfidenceBadge value={firstName} overall={overall} />
+              </div>
               <Input
                 className={missing.includes("first name") ? "mt-1.5 border-destructive" : "mt-1.5"}
                 value={firstName}
@@ -337,7 +406,10 @@ export function IdScanner({
               />
             </div>
             <div>
-              <Label>Last name / surname</Label>
+              <div className="flex items-center justify-between gap-2">
+                <Label>Last name / surname</Label>
+                <ConfidenceBadge value={lastName} overall={overall} />
+              </div>
               <Input
                 className={missing.includes("surname") ? "mt-1.5 border-destructive" : "mt-1.5"}
                 value={lastName}
@@ -346,7 +418,13 @@ export function IdScanner({
             </div>
           </div>
           <div>
-            <Label>Document type</Label>
+            <div className="flex items-center justify-between gap-2">
+              <Label>Document type</Label>
+              <ConfidenceBadge
+                value={documentType === "Unrecognised Nigerian ID" ? "" : documentType}
+                overall={overall}
+              />
+            </div>
             <select
               className={selectClass}
               value={documentType}
@@ -358,7 +436,10 @@ export function IdScanner({
             </select>
           </div>
           <div>
-            <Label>Document number</Label>
+            <div className="flex items-center justify-between gap-2">
+              <Label>Document number</Label>
+              <ConfidenceBadge value={documentNumber} overall={overall} />
+            </div>
             <Input
               className={
                 missing.includes("document number") ? "mt-1.5 border-destructive" : "mt-1.5"
@@ -402,7 +483,7 @@ export function IdScanner({
           <Button size="block" onClick={accept}>
             Accept and populate form
           </Button>
-          <Button size="block" variant="secondary" onClick={() => reset("choose")}>
+          <Button size="block" variant="secondary" onClick={() => reset("camera")}>
             <RotateCcw /> Retake photo
           </Button>
           {onCancel && (
@@ -410,7 +491,7 @@ export function IdScanner({
               size="block"
               variant="ghost"
               onClick={() => {
-                reset("choose");
+                reset("camera");
                 onCancel();
               }}
             >
