@@ -34,7 +34,7 @@ const DEBUG = import.meta.env.VITE_OCR_DEBUG === "true";
  * Default values returned to the existing visitor form. Override with the
  * toFormDocumentType prop if that form uses different option values.
  */
-export const DEFAULT_FORM_DOCUMENT_TYPE: Record<DocumentType, string | null> = {
+const DEFAULT_FORM_DOCUMENT_TYPE: Record<DocumentType, string | null> = {
   NIGERIAN_PASSPORT: "Nigerian International Passport",
   NIN_SLIP: "National Identity Number slip",
   NATIONAL_ID_CARD: "National Identity Card",
@@ -100,13 +100,7 @@ function confidenceAverage(confidence: OcrFieldConfidence) {
   return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : 0;
 }
 
-function ConfidenceBadge({
-  value,
-  confidence,
-}: {
-  value: string;
-  confidence: number | null;
-}) {
+function ConfidenceBadge({ value, confidence }: { value: string; confidence: number | null }) {
   if (!value.trim() || confidence == null) return <Badge variant="destructive">Review</Badge>;
   const percent = Math.round(confidence * 100);
   return (
@@ -125,7 +119,10 @@ function ConfidenceBadge({
 }
 
 function resultError(result: IdentityOcrResult) {
-  return result.message ?? "The identity document could not be read. Capture it again or enter it manually.";
+  return (
+    result.message ??
+    "The identity document could not be read. Capture it again or enter it manually."
+  );
 }
 
 export function IdScanner({
@@ -298,7 +295,7 @@ export function IdScanner({
     setPhase("review");
   }
 
-  async function usePhoto() {
+  async function processPhoto() {
     if (!file || phase === "processing") return;
     setPhase("processing");
     setError(null);
@@ -374,7 +371,7 @@ export function IdScanner({
     setMiddleName("");
     setLastName("");
     setDocumentNumber("");
-    void usePhoto();
+    void processPhoto();
   }
 
   function accept() {
@@ -465,20 +462,23 @@ export function IdScanner({
           </div>
 
           <p className="text-xs text-muted-foreground">
-            Fill the frame with the document and make all four corners visible. The captured image is
-            securely processed for identity extraction and is not saved to the visitor record.
+            Fill the frame with the document and make all four corners visible. The captured image
+            is securely processed for identity extraction and is not saved to the visitor record.
           </p>
 
           <div className="flex gap-2">
             <Button className="flex-1" disabled={!cameraReady} onClick={capture}>
-              <Camera /> Capture {captureSide === "DATA_PAGE" ? "data page" : captureSide.toLowerCase()}
+              <Camera /> Capture{" "}
+              {captureSide === "DATA_PAGE" ? "data page" : captureSide.toLowerCase()}
             </Button>
             <Button
               type="button"
               variant="secondary"
               size="icon"
               aria-label="Switch camera"
-              onClick={() => setFacing((current) => (current === "environment" ? "user" : "environment"))}
+              onClick={() =>
+                setFacing((current) => (current === "environment" ? "user" : "environment"))
+              }
             >
               <RefreshCw />
             </Button>
@@ -511,17 +511,21 @@ export function IdScanner({
                 {progress?.message ?? "Reading identity document…"}
               </p>
               <Progress value={progress?.percent ?? 10} />
-              <p className="text-xs text-muted-foreground">Keep this screen open until the review appears.</p>
+              <p className="text-xs text-muted-foreground">
+                Keep this screen open until the review appears.
+              </p>
             </div>
           ) : (
             <>
-              <Button size="block" onClick={usePhoto}>
+              <Button size="block" onClick={processPhoto}>
                 <CheckCircle2 /> Use photo
               </Button>
               <Button
                 size="block"
                 variant="secondary"
-                onClick={() => resetScanner({ preserveFront: Boolean(frontResult), side: captureSide })}
+                onClick={() =>
+                  resetScanner({ preserveFront: Boolean(frontResult), side: captureSide })
+                }
               >
                 <RotateCcw /> Retake
               </Button>
@@ -603,16 +607,15 @@ export function IdScanner({
             <div>
               <div className="flex items-center justify-between gap-2">
                 <Label htmlFor="ocr-first-name">First name</Label>
-                <ConfidenceBadge
-                  value={firstName}
-                  confidence={result.fieldConfidence.firstName}
-                />
+                <ConfidenceBadge value={firstName} confidence={result.fieldConfidence.firstName} />
               </div>
               <Input
                 id="ocr-first-name"
                 className={!firstName.trim() ? "mt-1.5 border-destructive" : "mt-1.5"}
                 value={firstName}
-                onChange={(event: ChangeEvent<HTMLInputElement>) => setFirstName(event.target.value)}
+                onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                  setFirstName(event.target.value)
+                }
               />
             </div>
             <div>
@@ -649,7 +652,9 @@ export function IdScanner({
             </div>
             <select
               id="ocr-document-type"
-              className={documentType === "UNKNOWN" ? `${selectClass} border-destructive` : selectClass}
+              className={
+                documentType === "UNKNOWN" ? `${selectClass} border-destructive` : selectClass
+              }
               value={documentType}
               onChange={(event: ChangeEvent<HTMLSelectElement>) =>
                 setDocumentType(event.target.value as DocumentType)
@@ -675,7 +680,9 @@ export function IdScanner({
               id="ocr-document-number"
               className={!documentNumber.trim() ? "mt-1.5 border-destructive" : "mt-1.5"}
               value={documentNumber}
-              onChange={(event: ChangeEvent<HTMLInputElement>) => setDocumentNumber(event.target.value)}
+              onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                setDocumentNumber(event.target.value)
+              }
             />
           </div>
 

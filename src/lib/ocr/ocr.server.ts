@@ -292,7 +292,10 @@ export async function extractIdentityDocument(input: OcrInput): Promise<Identity
       choices?: Array<{ message?: { content?: string } }>;
     };
     const content = body.choices?.[0]?.message?.content ?? "";
-    const jsonText = content.replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
+    const jsonText = content
+      .replace(/^```(?:json)?/i, "")
+      .replace(/```$/i, "")
+      .trim();
     payload = JSON.parse(jsonText) as Record<string, unknown>;
   } catch (error) {
     const timedOut = error instanceof Error && error.name === "AbortError";
@@ -303,8 +306,8 @@ export async function extractIdentityDocument(input: OcrInput): Promise<Identity
 
   const quality = (payload.quality ?? {}) as Record<string, unknown>;
   const warnings = Array.isArray(payload.warnings)
-    ? (payload.warnings as unknown[]).filter((warning): warning is string =>
-        typeof warning === "string",
+    ? (payload.warnings as unknown[]).filter(
+        (warning): warning is string => typeof warning === "string",
       )
     : [];
 
@@ -338,7 +341,9 @@ export async function extractIdentityDocument(input: OcrInput): Promise<Identity
 
   if (documentTypeConfidence != null && documentTypeConfidence < CONFIDENCE.documentType) {
     documentType = "UNKNOWN";
-    warnings.push("Document-type confidence is below the configured threshold. Select it manually.");
+    warnings.push(
+      "Document-type confidence is below the configured threshold. Select it manually.",
+    );
   }
 
   const fields: OcrFields = {
@@ -362,7 +367,9 @@ export async function extractIdentityDocument(input: OcrInput): Promise<Identity
   const mrz = parseMrz(cleanMrz(payload.mrz));
   if (mrz) {
     if (mrz.numberCheckPassed === false) {
-      warnings.push("The passport MRZ document-number check digit failed. Confirm the number manually.");
+      warnings.push(
+        "The passport MRZ document-number check digit failed. Confirm the number manually.",
+      );
     } else if (mrz.documentNumber) {
       fields.documentNumber = mrz.documentNumber;
       fieldConfidence.documentNumber = Math.max(fieldConfidence.documentNumber ?? 0, 0.92);
@@ -381,8 +388,7 @@ export async function extractIdentityDocument(input: OcrInput): Promise<Identity
     warnings.push("The passport MRZ could not be parsed. Confirm all values from the visual zone.");
   }
 
-  const workflowDocumentType =
-    documentType !== "UNKNOWN" ? documentType : hint ?? "UNKNOWN";
+  const workflowDocumentType = documentType !== "UNKNOWN" ? documentType : (hint ?? "UNKNOWN");
   fields.documentNumber = normaliseDocumentNumber(workflowDocumentType, fields.documentNumber);
 
   if (quality.blurred === true) warnings.push("The image is partly blurred; verify every field.");
@@ -392,9 +398,10 @@ export async function extractIdentityDocument(input: OcrInput): Promise<Identity
   const isTwoSided = TWO_SIDED_DOCUMENTS.includes(workflowDocumentType);
   const backNeeded = side === "FRONT" && isTwoSided && !fields.documentNumber;
   const missingNames = side !== "BACK" && (!fields.firstName || !fields.lastName);
-  const missingNumber = side === "BACK" || side === "DATA_PAGE"
-    ? !fields.documentNumber
-    : !fields.documentNumber && !isTwoSided;
+  const missingNumber =
+    side === "BACK" || side === "DATA_PAGE"
+      ? !fields.documentNumber
+      : !fields.documentNumber && !isTwoSided;
   const missingRequired = missingNames || missingNumber;
 
   if (backNeeded) warnings.push(FAILURE_MESSAGES.BACK_IMAGE_REQUIRED);

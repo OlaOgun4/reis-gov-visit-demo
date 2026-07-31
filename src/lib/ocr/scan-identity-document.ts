@@ -1,5 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/integrations/supabase/types";
 import {
   OCR_ALLOWED_MIME_TYPES,
   OCR_MAX_IMAGE_BYTES,
@@ -20,6 +22,7 @@ export type ScanRequest = {
 
 type AuthenticatedServerContext = {
   userId: string;
+  supabase: SupabaseClient<Database>;
 };
 
 function decodedByteLength(base64: string) {
@@ -72,7 +75,7 @@ function validateScanRequest(value: unknown): ScanRequest {
  */
 export const scanIdentityDocument = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator(validateScanRequest)
+  .validator(validateScanRequest)
   .handler(
     async ({
       data,
@@ -82,22 +85,20 @@ export const scanIdentityDocument = createServerFn({ method: "POST" })
       context: AuthenticatedServerContext;
     }): Promise<IdentityOcrResult> => {
       const { extractIdentityDocument } = await import("./ocr.server");
-      const { writeServerAudit } = await import("./platform.server");
 
       const result = await extractIdentityDocument(data);
-      const event = result.success
-        ? "IDENTITY_DOCUMENT_SCANNED"
-        : "IDENTITY_DOCUMENT_SCAN_FAILED";
+      const event = result.success ? "IDENTITY_DOCUMENT_SCANNED" : "IDENTITY_DOCUMENT_SCAN_FAILED";
 
       try {
-        await writeServerAudit({
-          actorId: context.userId,
-          actorName: "Reception officer",
+        const { error: auditError } = await context.supabase.from("audit_logs").insert({
+          actor_id: context.userId,
+          actor_name: "Reception officer",
           event,
           // Deliberately excludes image data, raw OCR text and document number.
-          recordRef: `${result.documentType ?? "UNKNOWN"} · ${result.captureSide} · ${result.durationMs}ms · ${result.requestId}`,
+          record_ref: `${result.documentType ?? "UNKNOWN"} · ${result.captureSide} · ${result.durationMs}ms · ${result.requestId}`,
           status: result.success ? "Success" : "Failed",
         });
+        if (auditError) throw auditError;
       } catch (error) {
         // Protected server telemetry only. Never include identity values here.
         console.error("[GovVisit] Identity-scan audit write failed", {

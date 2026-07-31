@@ -148,7 +148,8 @@ export const FAILURE_MESSAGES: Record<OcrFailureCategory, string> = {
   NO_DOCUMENT_DETECTED: "No identity document was detected. Ensure all four corners are visible.",
   IMAGE_TOO_BLURRED: "The image is too blurred to read. Hold the device steady and capture again.",
   IMAGE_GLARE: "Glare is obscuring the document. Tilt it away from the light and capture again.",
-  SERVICE_UNAVAILABLE: "The identity-recognition service is unavailable. Retry or use manual entry.",
+  SERVICE_UNAVAILABLE:
+    "The identity-recognition service is unavailable. Retry or use manual entry.",
   TIMEOUT: "The identity-recognition request timed out. Retry or use manual entry.",
   NO_READABLE_TEXT: "No readable text was found. Move closer, improve the lighting and try again.",
   UNKNOWN_DOCUMENT: "The document type could not be confirmed. Select it manually.",
@@ -236,8 +237,8 @@ export function mergeSides(primary: IdentityOcrResult, secondary: IdentityOcrRes
       new Set([
         ...primary.warnings,
         ...secondary.warnings,
-        ...conflicts.map((field) =>
-          `The front and back disagree on ${field}. Confirm the correct value.`,
+        ...conflicts.map(
+          (field) => `The front and back disagree on ${field}. Confirm the correct value.`,
         ),
       ]),
     ),
