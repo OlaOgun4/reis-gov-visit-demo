@@ -219,7 +219,6 @@ export function IdScanner({
 
   function accept() {
     onAccept({
-    onAccept({
       firstName: firstName.trim(),
       lastName: lastName.trim(),
       formDocumentType: FORM_DOCUMENT_TYPE[documentType],
