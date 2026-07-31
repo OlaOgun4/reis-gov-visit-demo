@@ -495,6 +495,9 @@ export function IdScanner({
           <Button size="block" onClick={accept}>
             Accept and populate form
           </Button>
+          <Button size="block" variant="secondary" onClick={retryOnSameFrame} disabled={!file}>
+            <RefreshCw /> Re-run scan on this frame
+          </Button>
           <Button size="block" variant="secondary" onClick={() => reset("camera")}>
             <RotateCcw /> Retake photo
           </Button>
