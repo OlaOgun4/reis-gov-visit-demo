@@ -84,9 +84,14 @@ export const scanIdentityDocument = createServerFn({ method: "POST" })
       data: ScanRequest;
       context: AuthenticatedServerContext;
     }): Promise<IdentityOcrResult> => {
-      const { extractIdentityDocument } = await import("./ocr.server");
-
-      const result = await extractIdentityDocument(data);
+      const { data: functionResult, error: functionError } =
+        await context.supabase.functions.invoke<IdentityOcrResult>("scan-identity-document", {
+          body: data,
+        });
+      if (functionError || !functionResult) {
+        throw new Error("The shared identity-recognition service is unavailable.");
+      }
+      const result = functionResult;
       const event = result.success ? "IDENTITY_DOCUMENT_SCANNED" : "IDENTITY_DOCUMENT_SCAN_FAILED";
 
       try {

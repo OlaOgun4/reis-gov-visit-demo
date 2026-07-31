@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { encodeGovVisitPassQr } from "@/lib/govvisit-qr";
 
 /** Renders a real scannable QR code for the visitor pass, encoded on the device. */
 export function QrCode({ value, size = 168 }: { value: string; size?: number }) {
@@ -7,7 +8,7 @@ export function QrCode({ value, size = 168 }: { value: string; size?: number }) 
   useEffect(() => {
     let active = true;
     import("qrcode").then(async (mod) => {
-      const url = await mod.toDataURL(value, {
+      const url = await mod.toDataURL(encodeGovVisitPassQr(value), {
         width: size * 2,
         margin: 1,
         errorCorrectionLevel: "M",
