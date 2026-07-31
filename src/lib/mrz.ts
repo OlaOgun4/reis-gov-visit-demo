@@ -142,42 +142,12 @@ export function parseAamva(raw: string): ParsedIdentity | null {
   };
 }
 
-/** QR payloads used by GovVisit passes and generic JSON/URL visitor payloads. */
+/**
+ * Identity population from arbitrary QR/barcode content is intentionally disabled.
+ * GovVisit pass QR validation lives in govvisit-qr.ts and never returns identity fields.
+ */
 export function parseCodePayload(raw: string): ParsedIdentity | null {
-  const trimmed = raw.trim();
-  const aamva = parseAamva(trimmed);
-  if (aamva) return aamva;
-
-  try {
-    const json = JSON.parse(trimmed) as Record<string, string>;
-    const firstName = json.firstName ?? json.first_name ?? json.givenName ?? "";
-    const lastName = json.lastName ?? json.last_name ?? json.surname ?? "";
-    const documentNumber = json.documentNumber ?? json.document_number ?? json.id ?? "";
-    if (firstName || lastName || documentNumber) {
-      return {
-        firstName,
-        lastName,
-        documentNumber,
-        documentType: json.documentType ?? json.document_type,
-        source: "qr",
-        confidence: 0.95,
-      };
-    }
-  } catch {
-    /* not JSON */
-  }
-
-  // Delimited payloads, e.g. "OKORO|CHINEDU|A12345678"
-  const parts = trimmed.split(/[|;]/).map((p) => p.trim());
-  if (parts.length >= 3) {
-    return {
-      lastName: parts[0],
-      firstName: parts[1],
-      documentNumber: parts[2],
-      source: "barcode",
-      confidence: 0.7,
-    };
-  }
+  void raw;
   return null;
 }
 

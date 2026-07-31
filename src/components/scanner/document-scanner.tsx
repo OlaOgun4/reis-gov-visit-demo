@@ -2,7 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Camera, Loader2, RefreshCw, ScanLine, Zap, ZapOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { parseCodePayload, parseScannedText, type ParsedIdentity } from "@/lib/mrz";
+import { parseScannedText, type ParsedIdentity } from "@/lib/mrz";
+import { parseGovVisitPassQr } from "@/lib/govvisit-qr";
 
 type ZXingReader = {
   decodeFromVideoElement: (
@@ -21,7 +22,7 @@ export interface ScannerProps {
   /** "document" runs OCR/MRZ on capture and live 1D/2D code reading. "code" only reads codes. */
   mode?: "document" | "code";
   onIdentity?: (identity: ParsedIdentity) => void;
-  /** Raw payload of any barcode/QR read (pass codes, ID barcodes). */
+  /** Validated pass code extracted from a versioned GovVisit QR payload. */
   onCode?: (text: string) => void;
   hint?: string;
 }
@@ -92,9 +93,13 @@ export function DocumentScanner({ mode = "document", onIdentity, onCode, hint }:
           const text = result.getText();
           if (!text || text === seenRef.current) return;
           seenRef.current = text;
-          onCode?.(text);
-          const identity = parseCodePayload(text);
-          if (identity && onIdentity) onIdentity(identity);
+          const pass = parseGovVisitPassQr(text);
+          if (mode === "code" && pass) {
+            setError(null);
+            onCode?.(pass.passCode);
+          } else {
+            setError("Unsupported or invalid QR code. Scan a current GovVisit visitor pass.");
+          }
           setTimeout(() => (seenRef.current = ""), 2500);
         });
       } catch (err) {
@@ -266,7 +271,7 @@ export function DocumentScanner({ mode = "document", onIdentity, onCode, hint }:
           <Badge variant={ready ? "success" : "secondary"}>
             {ready ? "Camera live" : "Starting camera…"}
           </Badge>
-          {mode === "document" && <Badge variant="gold">OCR · MRZ · QR · barcode</Badge>}
+          {mode === "document" && <Badge variant="gold">OCR · MRZ</Badge>}
         </div>
         {!ready && (
           <div className="absolute inset-0 grid place-items-center text-primary-foreground">
@@ -301,8 +306,8 @@ export function DocumentScanner({ mode = "document", onIdentity, onCode, hint }:
         {progress ||
           hint ||
           (mode === "code"
-            ? "Hold the visitor pass QR code or the document barcode inside the frame — it is read automatically."
-            : "Passport or ID data page inside the frame. Barcodes and QR codes are read automatically; press capture for printed text and passport MRZ.")}
+            ? "Hold a current GovVisit visitor-pass QR code inside the frame. Other codes are rejected."
+            : "Hold the passport or ID data page inside the frame, then press capture for printed text or passport MRZ.")}
       </p>
       {attempts > 0 && !error && !busy && (
         <p className="text-[11px] text-muted-foreground">

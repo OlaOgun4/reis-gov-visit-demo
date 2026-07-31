@@ -231,7 +231,10 @@ function approximateDecodedBytes(base64: string) {
   return Math.max(0, Math.floor((base64.length * 3) / 4) - padding);
 }
 
-export async function extractIdentityDocument(input: OcrInput): Promise<IdentityOcrResult> {
+export async function extractIdentityDocument(
+  input: OcrInput,
+  providerApiKey = process.env.LOVABLE_API_KEY,
+): Promise<IdentityOcrResult> {
   const startedAt = Date.now();
   const requestId = crypto.randomUUID();
   const side = input.captureSide;
@@ -244,7 +247,7 @@ export async function extractIdentityDocument(input: OcrInput): Promise<Identity
     return fail("FILE_TOO_LARGE", requestId, side, startedAt);
   }
 
-  const apiKey = process.env.LOVABLE_API_KEY;
+  const apiKey = providerApiKey;
   if (!apiKey) return fail("PROVIDER_NOT_CONFIGURED", requestId, side, startedAt);
 
   const hint = input.selectedHint && input.selectedHint !== "UNKNOWN" ? input.selectedHint : null;
