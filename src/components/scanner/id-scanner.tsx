@@ -229,6 +229,18 @@ export function IdScanner({
     });
   }
 
+  /** Clear the review fields and re-run OCR on the frame already captured. */
+  function retryOnSameFrame() {
+    if (!file || phase === "processing") return;
+    setResult(null);
+    setFirstName("");
+    setLastName("");
+    setDocumentNumber("");
+    setDocumentType("Unrecognised Nigerian ID");
+    setShowRaw(false);
+    void usePhoto();
+  }
+
   const missing = [
     !firstName.trim() && "first name",
     !lastName.trim() && "surname",
@@ -482,6 +494,9 @@ export function IdScanner({
 
           <Button size="block" onClick={accept}>
             Accept and populate form
+          </Button>
+          <Button size="block" variant="secondary" onClick={retryOnSameFrame} disabled={!file}>
+            <RefreshCw /> Re-run scan on this frame
           </Button>
           <Button size="block" variant="secondary" onClick={() => reset("camera")}>
             <RotateCcw /> Retake photo
