@@ -219,6 +219,7 @@ export function IdScanner({
 
   function accept() {
     onAccept({
+    onAccept({
       firstName: firstName.trim(),
       lastName: lastName.trim(),
       formDocumentType: FORM_DOCUMENT_TYPE[documentType],
@@ -227,6 +228,18 @@ export function IdScanner({
       confidence: result?.confidence ?? 0,
       demo,
     });
+  }
+
+  /** Clear the review fields and re-run OCR on the frame already captured. */
+  function retryOnSameFrame() {
+    if (!file || phase === "processing") return;
+    setResult(null);
+    setFirstName("");
+    setLastName("");
+    setDocumentNumber("");
+    setDocumentType("Unrecognised Nigerian ID");
+    setShowRaw(false);
+    void usePhoto();
   }
 
   const missing = [
