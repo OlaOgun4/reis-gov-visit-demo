@@ -1,6 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.110.9";
-import { extractIdentityDocument } from "../../../src/lib/ocr/ocr.server.ts";
-import type { OcrInput } from "../../../src/lib/ocr/ocr.server.ts";
+import { extractIdentityDocument } from "./_shared/ocr.server.ts";
+import type { OcrInput } from "./_shared/ocr.server.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
