@@ -58,6 +58,9 @@ function DirectoryPage() {
   const [deptForm, setDeptForm] = useState(emptyDept);
   const [hostOpen, setHostOpen] = useState(false);
   const [hostId, setHostId] = useState<string | null>(null);
+  const pageSize = useRowsPerPage();
+  const [deptSearch, setDeptSearch] = useState("");
+  const [hostSearch, setHostSearch] = useState("");
   const [hostForm, setHostForm] = useState(emptyHost);
 
   const departments = useQuery({
