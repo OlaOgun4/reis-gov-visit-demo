@@ -154,7 +154,7 @@ function GovernmentBrand() {
     <div className="flex min-w-0 items-center gap-3">
       <div className="flex h-12 w-16 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-white p-1 shadow-sm">
         <img
-          src={coatOfArms}
+          src={nigeriaCoatOfArms}
           alt="Coat of Arms of the Federal Republic of Nigeria"
           width={265}
           height={177}
