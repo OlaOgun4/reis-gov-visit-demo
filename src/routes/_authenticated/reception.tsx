@@ -737,18 +737,6 @@ function Reception() {
               />
             </div>
             <div>
-              <Label>Identity document</Label>
-              <select
-                className={selectClass}
-                value={draft.documentType}
-                onChange={(e) => setDraft({ ...draft, documentType: e.target.value })}
-              >
-                {DOCUMENT_TYPES.map((d) => (
-                  <option key={d}>{d}</option>
-                ))}
-              </select>
-            </div>
-            <div>
               <Label>Document number</Label>
               <Input
                 className="mt-1.5"
