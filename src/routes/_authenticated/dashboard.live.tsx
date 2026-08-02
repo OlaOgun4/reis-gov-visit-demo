@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Pencil } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/use-session";
+import { useRealtimeVisits } from "@/hooks/use-realtime-visits";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -53,6 +54,7 @@ export const Route = createFileRoute("/_authenticated/dashboard/live")({
 });
 
 function LiveVisitors() {
+  useRealtimeVisits();
   const { data: session } = useSession();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
