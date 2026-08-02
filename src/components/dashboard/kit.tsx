@@ -234,14 +234,13 @@ export function useTableView<T>(
   };
 }
 
-export function TablePagination<T>({ view, noun = "row" }: { view: TableView<T>; noun?: string }) {
+export function TablePagination<T>({ view, noun = "rows" }: { view: TableView<T>; noun?: string }) {
   const from = view.total === 0 ? 0 : (view.page - 1) * view.pageSize + 1;
   const to = Math.min(view.total, view.page * view.pageSize);
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-5 py-3 text-xs text-muted-foreground">
       <p>
         Showing {from}–{to} of {view.total} {noun}
-        {view.total === 1 ? "" : "s"}
       </p>
       <div className="flex items-center gap-2">
         <Button
@@ -417,19 +416,28 @@ export function DeleteButton({
   label = "Delete record",
   description = "This action cannot be undone.",
   disabled,
+  variant = "icon",
 }: {
   onConfirm: () => void;
   label?: string;
   description?: string;
   disabled?: boolean;
+  variant?: "icon" | "button";
 }) {
   const [open, setOpen] = useState(false);
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
       <AlertDialogTrigger asChild>
-        <Button variant="ghost" size="icon" aria-label={label} disabled={disabled}>
-          <Trash2 className="text-destructive" />
-        </Button>
+        {variant === "button" ? (
+          <Button variant="outline" disabled={disabled}>
+            <Trash2 className="text-destructive" />
+            {label}
+          </Button>
+        ) : (
+          <Button variant="ghost" size="icon" aria-label={label} disabled={disabled}>
+            <Trash2 className="text-destructive" />
+          </Button>
+        )}
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
