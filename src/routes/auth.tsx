@@ -6,6 +6,7 @@ import { landingPath, roleRank, type AppRole } from "@/lib/govvisit";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import nigeriaCoatOfArms from "@/assets/nigeria-coat-of-arms.svg";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -209,15 +210,7 @@ function AuthPage() {
 
         <div className="relative mx-auto flex h-full max-w-5xl flex-col">
           <header className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="grid size-12 shrink-0 place-items-center rounded-xl bg-primary-foreground font-display text-xl font-bold text-primary shadow-lg shadow-black/10">
-                FG
-              </div>
-              <div>
-                <p className="font-display text-2xl leading-none">GovVisit</p>
-                <p className="mt-1 text-xs opacity-80">Federal Public Services Administration</p>
-              </div>
-            </div>
+            <GovernmentBrand variant="inverse" />
             <span className="hidden rounded-full border border-white/25 bg-white/10 px-3 py-1.5 text-xs font-semibold backdrop-blur sm:inline-flex">
               Version 1 Demonstration
             </span>
@@ -457,6 +450,37 @@ function AuthPage() {
         </div>
       </section>
     </main>
+  );
+}
+
+function GovernmentBrand({ variant = "default" }: { variant?: "default" | "inverse" }) {
+  const inverse = variant === "inverse";
+
+  return (
+    <div className="flex min-w-0 items-center gap-3">
+      <div
+        className={`flex h-14 w-[4.5rem] shrink-0 items-center justify-center overflow-hidden rounded-xl border p-1 shadow-sm ${
+          inverse ? "border-white/25 bg-white" : "border-border bg-white"
+        }`}
+      >
+        <img
+          src={coatOfArms}
+          alt="Coat of Arms of the Federal Republic of Nigeria"
+          width={265}
+          height={177}
+          className="h-full w-full object-contain"
+        />
+      </div>
+      <div className="min-w-0">
+        <p className="font-display text-2xl leading-none">GovVisit</p>
+        <p className={`mt-1 text-[11px] font-semibold uppercase tracking-[0.08em] ${inverse ? "text-white/75" : "text-muted-foreground"}`}>
+          Federal Republic of Nigeria
+        </p>
+        <p className={`mt-0.5 text-[10px] ${inverse ? "text-white/60" : "text-muted-foreground"}`}>
+          Federal Public Services Administration
+        </p>
+      </div>
+    </div>
   );
 }
 

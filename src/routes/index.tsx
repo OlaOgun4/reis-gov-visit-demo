@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight, ClipboardCheck, LayoutDashboard, ShieldCheck, Users } from "lucide-react";
 import heroImage from "@/assets/govvisit-hero.jpg";
+import nigeriaCoatOfArms from "@/assets/nigeria-coat-of-arms.svg";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useSession } from "@/hooks/use-session";
@@ -56,17 +57,7 @@ function Landing() {
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-card/80 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4">
-          <div className="flex items-center gap-3">
-            <div className="grid size-10 place-items-center rounded-xl bg-crest-gradient font-display text-base text-primary-foreground">
-              FG
-            </div>
-            <div>
-              <p className="font-display text-xl leading-none">GovVisit</p>
-              <p className="text-[11px] text-muted-foreground">
-                Federal Public Services Administration
-              </p>
-            </div>
-          </div>
+          <GovernmentBrand />
           {signedIn ? (
             <div className="flex items-center gap-2">
               <Button asChild variant="ghost" size="sm">
@@ -154,6 +145,31 @@ function Landing() {
       <footer className="border-t border-border py-8 text-center text-xs text-muted-foreground">
         GovVisit demo prototype · Restricted system · Authorised personnel only
       </footer>
+    </div>
+  );
+}
+
+function GovernmentBrand() {
+  return (
+    <div className="flex min-w-0 items-center gap-3">
+      <div className="flex h-12 w-16 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-white p-1 shadow-sm">
+        <img
+          src={coatOfArms}
+          alt="Coat of Arms of the Federal Republic of Nigeria"
+          width={265}
+          height={177}
+          className="h-full w-full object-contain"
+        />
+      </div>
+      <div className="min-w-0">
+        <p className="font-display text-xl leading-none">GovVisit</p>
+        <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+          Federal Republic of Nigeria
+        </p>
+        <p className="mt-0.5 text-[10px] text-muted-foreground">
+          Federal Public Services Administration
+        </p>
+      </div>
     </div>
   );
 }
