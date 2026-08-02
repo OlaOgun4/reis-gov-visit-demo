@@ -413,25 +413,6 @@ export function IdScanner({
 
       {phase === "camera" && (
         <div className="space-y-2.5">
-          <div>
-            <Label htmlFor="scan-document-type">Document type</Label>
-            <select
-              id="scan-document-type"
-              className={selectClass}
-              value={documentType}
-              disabled={captureSide === "BACK"}
-              onChange={(event: ChangeEvent<HTMLSelectElement>) =>
-                changeDocumentType(event.target.value as DocumentType)
-              }
-            >
-              {DOCUMENT_TYPES.map((type) => (
-                <option key={type} value={type}>
-                  {DOCUMENT_TYPE_LABELS[type]}
-                </option>
-              ))}
-            </select>
-          </div>
-
           <div className="flex items-center justify-between rounded-xl border border-border bg-card px-3 py-2">
             <span className="text-xs font-medium text-muted-foreground">Capture required</span>
             <Badge variant="secondary">

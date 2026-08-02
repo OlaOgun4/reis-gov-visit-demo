@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useRealtimeVisits } from "@/hooks/use-realtime-visits";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataTable, EmptyRow, PageHeader, Panel, StatCard, Td } from "@/components/dashboard/kit";
@@ -35,6 +36,7 @@ export const Route = createFileRoute("/_authenticated/dashboard/")({
 });
 
 function Overview() {
+  useRealtimeVisits();
   const visits = useQuery({
     queryKey: ["visits", "all"],
     queryFn: async () => {

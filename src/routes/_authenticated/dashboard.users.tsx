@@ -23,7 +23,10 @@ import {
   SelectField,
   Td,
   TextField,
+  TablePagination,
+  useTableView,
 } from "@/components/dashboard/kit";
+import { useRowsPerPage } from "@/hooks/use-rows-per-page";
 import { useSession } from "@/hooks/use-session";
 import {
   ROLES,
@@ -88,6 +91,7 @@ function UsersPage() {
     role: "receptionist" as AppRole,
   });
   const [search, setSearch] = useState("");
+  const pageSize = useRowsPerPage();
 
   const createStaff = createStaffUser;
   const fetchStaff = listStaff;
@@ -196,11 +200,20 @@ function UsersPage() {
 
   const deptName = (id: string | null) => departments.data?.find((d) => d.id === id)?.name ?? "—";
 
-  const rows = (staff.data ?? []).filter((s) =>
-    `${s.full_name} ${s.email} ${s.job_title ?? ""} ${roleLabel(s.role)}`
-      .toLowerCase()
-      .includes(search.toLowerCase()),
-  );
+  const rows = staff.data ?? [];
+  const view = useTableView(rows, {
+    pageSize,
+    search,
+    searchText: (s) => `${s.full_name} ${s.email} ${s.job_title ?? ""} ${roleLabel(s.role)}`,
+    sorters: {
+      name: (s) => s.full_name,
+      email: (s) => s.email,
+      job: (s) => s.job_title ?? "",
+      department: (s) => deptName(s.department_id),
+      role: (s) => s.rank,
+    },
+    initialSort: "name",
+  });
 
   const canEdit = (row: StaffRow) => {
     const rank = session?.rank ?? 99;
@@ -248,7 +261,7 @@ function UsersPage() {
 
       <div className="grid gap-4">
         <Panel
-          title={`${rows.length} staff account${rows.length === 1 ? "" : "s"}`}
+          title={`${view.total} staff account${view.total === 1 ? "" : "s"}`}
           actions={
             <div className="flex items-center gap-2">
               <TextFieldInline value={search} onChange={setSearch} />
@@ -270,9 +283,19 @@ function UsersPage() {
           }
         >
           <DataTable
-            head={["Staff member", "Email address", "Job title", "Department", "Role", ""]}
+            sortKey={view.sortKey}
+            sortDir={view.sortDir}
+            onSort={view.toggleSort}
+            head={[
+              { label: "Staff member", sortKey: "name" },
+              { label: "Email address", sortKey: "email" },
+              { label: "Job title", sortKey: "job" },
+              { label: "Department", sortKey: "department" },
+              { label: "Role", sortKey: "role" },
+              "",
+            ]}
           >
-            {rows.map((s) => {
+            {view.rows.map((s) => {
               const deletable = canDeleteUser(session, {
                 userId: s.id,
                 rank: s.rank,
@@ -328,7 +351,7 @@ function UsersPage() {
                 </tr>
               );
             })}
-            {rows.length === 0 && (
+            {view.rows.length === 0 && (
               <EmptyRow
                 colSpan={6}
                 message={
@@ -339,6 +362,7 @@ function UsersPage() {
               />
             )}
           </DataTable>
+          <TablePagination view={view} noun="accounts" />
         </Panel>
 
         <Panel title="Access hierarchy">

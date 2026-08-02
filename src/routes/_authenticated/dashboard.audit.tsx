@@ -12,9 +12,12 @@ import {
   EmptyRow,
   PageHeader,
   Panel,
+  TablePagination,
   Td,
+  useTableView,
 } from "@/components/dashboard/kit";
 import { useSession } from "@/hooks/use-session";
+import { useRowsPerPage } from "@/hooks/use-rows-per-page";
 import { canDeleteAudit, downloadCsv, formatDate, formatTime, type AuditLog } from "@/lib/govvisit";
 
 export const Route = createFileRoute("/_authenticated/dashboard/audit")({
@@ -37,6 +40,7 @@ function AuditPage() {
   const { data: session } = useSession();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
+  const pageSize = useRowsPerPage();
 
   const logs = useQuery({
     queryKey: ["audit"],
@@ -63,9 +67,36 @@ function AuditPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const rows = (logs.data ?? []).filter((l) =>
-    `${l.actor_name} ${l.event} ${l.record_ref ?? ""}`.toLowerCase().includes(search.toLowerCase()),
-  );
+  const clearAll = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase
+        .from("audit_logs")
+        .delete()
+        .neq("id", "00000000-0000-0000-0000-000000000000");
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("All audit log entries cleared");
+      queryClient.invalidateQueries({ queryKey: ["audit"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const rows = logs.data ?? [];
+  const view = useTableView(rows, {
+    pageSize,
+    search,
+    searchText: (l) => `${l.actor_name} ${l.event} ${l.record_ref ?? ""} ${l.status}`,
+    sorters: {
+      created_at: (l) => l.created_at,
+      actor: (l) => l.actor_name,
+      event: (l) => l.event,
+      record: (l) => l.record_ref ?? "",
+      status: (l) => l.status,
+    },
+    initialSort: "created_at",
+    initialDir: "desc",
+  });
 
   return (
     <div>
@@ -73,6 +104,7 @@ function AuditPage() {
         title="Audit logs"
         description="Every registration, checkout, record change and export is recorded."
         actions={
+          <>
           <Button
             variant="outline"
             onClick={() =>
@@ -90,11 +122,20 @@ function AuditPage() {
           >
             Export CSV
           </Button>
+          {canDeleteAudit(session) && (
+            <DeleteButton
+              variant="button"
+              label="Clear all audit logs"
+              description="Every audit entry will be permanently deleted. This is intended for testing."
+              onConfirm={() => clearAll.mutate()}
+            />
+          )}
+          </>
         }
       />
 
       <Panel
-        title={`${rows.length} entr${rows.length === 1 ? "y" : "ies"}`}
+        title={`${view.total} entr${view.total === 1 ? "y" : "ies"}`}
         actions={
           <Input
             className="w-56"
@@ -104,8 +145,20 @@ function AuditPage() {
           />
         }
       >
-        <DataTable head={["Timestamp", "Actor", "Event", "Record", "Status", ""]}>
-          {rows.map((l) => (
+        <DataTable
+          sortKey={view.sortKey}
+          sortDir={view.sortDir}
+          onSort={view.toggleSort}
+          head={[
+            { label: "Timestamp", sortKey: "created_at" },
+            { label: "Actor", sortKey: "actor" },
+            { label: "Event", sortKey: "event" },
+            { label: "Record", sortKey: "record" },
+            { label: "Status", sortKey: "status" },
+            "",
+          ]}
+        >
+          {view.rows.map((l) => (
             <tr key={l.id}>
               <Td>
                 {formatTime(l.created_at)}
@@ -131,8 +184,9 @@ function AuditPage() {
               </Td>
             </tr>
           ))}
-          {rows.length === 0 && <EmptyRow colSpan={6} message="No audit entries yet." />}
+          {view.rows.length === 0 && <EmptyRow colSpan={6} message="No audit entries yet." />}
         </DataTable>
+        <TablePagination view={view} noun="entries" />
       </Panel>
     </div>
   );

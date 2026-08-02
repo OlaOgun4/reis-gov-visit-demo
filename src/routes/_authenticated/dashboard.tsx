@@ -18,7 +18,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { useSession } from "@/hooks/use-session";
-import { initials, roleLabel, type FacilityConfig } from "@/lib/govvisit";
+import { canUseMobileApp, initials, roleLabel, type FacilityConfig } from "@/lib/govvisit";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: DashboardLayout,
@@ -91,6 +91,8 @@ function DashboardLayout() {
           ))}
         </nav>
         <div className="mt-5 border-t border-sidebar-border pt-4">
+          {canUseMobileApp(session) && (
+            <>
           <Link
             to="/reception"
             className="flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-xs font-semibold opacity-90 hover:bg-sidebar-accent"
@@ -105,6 +107,8 @@ function DashboardLayout() {
             <ScanLine className="size-4" />
             Self-service kiosk
           </Link>
+            </>
+          )}
         </div>
       </aside>
 

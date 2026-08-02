@@ -71,6 +71,7 @@ function SettingsPage() {
     approval_workflow: APPROVALS[0],
     overdue_grace_minutes: "15",
     retention_months: "24",
+    rows_per_page: "10",
   });
 
   useEffect(() => {
@@ -81,6 +82,7 @@ function SettingsPage() {
         approval_workflow: config.data.approval_workflow,
         overdue_grace_minutes: String(config.data.overdue_grace_minutes),
         retention_months: String(config.data.retention_months),
+        rows_per_page: String(config.data.rows_per_page ?? 10),
       });
     }
   }, [config.data]);
@@ -109,6 +111,7 @@ function SettingsPage() {
         approval_workflow: form.approval_workflow,
         overdue_grace_minutes: Number(form.overdue_grace_minutes),
         retention_months: Number(form.retention_months),
+        rows_per_page: Math.max(1, Number(form.rows_per_page) || 10),
       };
       if (config.data) {
         const { error } = await supabase
@@ -178,6 +181,12 @@ function SettingsPage() {
                 onChange={(v) => setForm({ ...form, retention_months: v })}
               />
             </div>
+            <SelectField
+              label="Table rows per page"
+              value={form.rows_per_page}
+              onChange={(v) => setForm({ ...form, rows_per_page: v })}
+              options={["5", "10", "20", "25", "50", "100"].map((n) => ({ value: n, label: n }))}
+            />
             <Button type="submit" disabled={!isAdmin || saveConfig.isPending}>
               {saveConfig.isPending ? "Saving…" : "Save configuration"}
             </Button>
