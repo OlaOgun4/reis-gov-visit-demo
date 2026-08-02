@@ -23,7 +23,10 @@ import {
   SelectField,
   Td,
   TextField,
+  TablePagination,
+  useTableView,
 } from "@/components/dashboard/kit";
+import { useRowsPerPage } from "@/hooks/use-rows-per-page";
 import { useSession } from "@/hooks/use-session";
 import {
   ROLES,

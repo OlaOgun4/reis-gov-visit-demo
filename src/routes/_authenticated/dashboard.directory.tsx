@@ -16,7 +16,10 @@ import {
   SelectField,
   Td,
   TextField,
+  TablePagination,
+  useTableView,
 } from "@/components/dashboard/kit";
+import { useRowsPerPage } from "@/hooks/use-rows-per-page";
 import { useSession } from "@/hooks/use-session";
 import { canDeleteDept, canManageDept, logAudit, type Department, type Host } from "@/lib/govvisit";
 

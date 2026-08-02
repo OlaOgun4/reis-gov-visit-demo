@@ -16,7 +16,10 @@ import {
   SelectField,
   StatCard,
   Td,
+  TablePagination,
+  useTableView,
 } from "@/components/dashboard/kit";
+import { useRowsPerPage } from "@/hooks/use-rows-per-page";
 import {
   canDeleteDept,
   APPROVALS,
