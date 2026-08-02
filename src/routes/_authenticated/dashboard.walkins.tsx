@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/use-session";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   DataTable,
   DeleteButton,
@@ -16,7 +17,10 @@ import {
   SelectField,
   StatCard,
   Td,
+  TablePagination,
+  useTableView,
 } from "@/components/dashboard/kit";
+import { useRowsPerPage } from "@/hooks/use-rows-per-page";
 import {
   canDeleteDept,
   APPROVALS,
@@ -50,6 +54,8 @@ function WalkinsPage() {
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState<Visit | null>(null);
   const [approval, setApproval] = useState(APPROVALS[0]);
+  const pageSize = useRowsPerPage();
+  const [search, setSearch] = useState("");
 
   const visits = useQuery({
     queryKey: ["visits", "walkins"],
@@ -119,6 +125,23 @@ function WalkinsPage() {
 
   const rows = visits.data ?? [];
   const inside = rows.filter((v) => v.status === "inside");
+  const view = useTableView(rows, {
+    pageSize,
+    search,
+    searchText: (v) =>
+      `${fullName(v.visitors)} ${v.pass_code} ${v.departments?.name ?? ""} ${v.hosts?.full_name ?? ""} ${v.approval} ${v.status}`,
+    sorters: {
+      pass: (v) => v.pass_code,
+      visitor: (v) => fullName(v.visitors),
+      department: (v) => v.departments?.code ?? "",
+      host: (v) => v.hosts?.full_name ?? "",
+      approval: (v) => v.approval,
+      arrived: (v) => v.checked_in_at,
+      status: (v) => v.status,
+    },
+    initialSort: "arrived",
+    initialDir: "desc",
+  });
 
   return (
     <div>
@@ -133,11 +156,33 @@ function WalkinsPage() {
         <StatCard value={inside.filter((v) => isOverdue(v)).length} label="Overdue walk-ins" />
       </div>
 
-      <Panel title="Walk-in register">
+      <Panel
+        title="Walk-in register"
+        actions={
+          <Input
+            className="w-56"
+            placeholder="Search walk-ins"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        }
+      >
         <DataTable
-          head={["Pass", "Visitor", "Department", "Host", "Approval", "Arrived", "Status", ""]}
+          sortKey={view.sortKey}
+          sortDir={view.sortDir}
+          onSort={view.toggleSort}
+          head={[
+            { label: "Pass", sortKey: "pass" },
+            { label: "Visitor", sortKey: "visitor" },
+            { label: "Department", sortKey: "department" },
+            { label: "Host", sortKey: "host" },
+            { label: "Approval", sortKey: "approval" },
+            { label: "Arrived", sortKey: "arrived" },
+            { label: "Status", sortKey: "status" },
+            "",
+          ]}
         >
-          {rows.map((v) => (
+          {view.rows.map((v) => (
             <tr key={v.id}>
               <Td className="text-xs text-muted-foreground">{v.pass_code}</Td>
               <Td className="font-semibold">
@@ -191,8 +236,9 @@ function WalkinsPage() {
               </Td>
             </tr>
           ))}
-          {rows.length === 0 && <EmptyRow colSpan={8} message="No walk-in visits recorded." />}
+          {view.rows.length === 0 && <EmptyRow colSpan={8} message="No walk-in visits recorded." />}
         </DataTable>
+        <TablePagination view={view} noun="walk-ins" />
       </Panel>
 
       <FormDialog

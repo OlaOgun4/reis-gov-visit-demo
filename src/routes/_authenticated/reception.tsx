@@ -46,6 +46,7 @@ import {
   logAudit,
   minutesSince,
   roleLabel,
+  canUseMobileApp,
 } from "@/lib/govvisit";
 
 export const Route = createFileRoute("/_authenticated/reception")({
@@ -130,6 +131,7 @@ function Reception() {
   const [search, setSearch] = useState("");
   const [insideSearch, setInsideSearch] = useState("");
   const [checkoutVisit, setCheckoutVisit] = useState<Visit | null>(null);
+  const [checkoutMode, setCheckoutMode] = useState<"id" | "code">("id");
   const [badgeReturned, setBadgeReturned] = useState(true);
   const [privacyAck, setPrivacyAck] = useState(true);
   const [lastVisit, setLastVisit] = useState<Visit | null>(null);
@@ -140,6 +142,14 @@ function Reception() {
     const t = setInterval(() => setClock(new Date()), 30000);
     return () => clearInterval(t);
   }, []);
+
+  // Department Receptionists are web-only; they never use the mobile reception app.
+  useEffect(() => {
+    if (session && !canUseMobileApp(session)) {
+      toast.error("Department Receptionists use the web administration, not the mobile app.");
+      navigate({ to: "/dashboard", replace: true });
+    }
+  }, [session, navigate]);
 
   const config = useQuery({
     queryKey: ["config"],
@@ -303,6 +313,41 @@ function Reception() {
     }
     setCheckoutVisit(match);
     setBadgeReturned(true);
+    setScreen("checkoutMatch");
+  }
+
+  /** Identity document re-scanned at checkout: match first name, last name or document number. */
+  function matchCheckoutIdentity(scan: IdScanResult) {
+    const first = scan.firstName.trim().toLowerCase();
+    const last = scan.lastName.trim().toLowerCase();
+    const doc = scan.documentNumber.trim().toUpperCase();
+
+    const byDocument = doc
+      ? inside.filter((v) => (v.visitors?.document_number ?? "").toUpperCase() === doc)
+      : [];
+    const byName = inside.filter((v) => {
+      const f = (v.visitors?.first_name ?? "").trim().toLowerCase();
+      const l = (v.visitors?.last_name ?? "").trim().toLowerCase();
+      return (first && (f === first || l === first)) || (last && (l === last || f === last));
+    });
+    const matches = byDocument.length ? byDocument : byName;
+
+    if (matches.length === 0) {
+      toast.error("No active visit matches the scanned identity document.");
+      setScreen("inside");
+      return;
+    }
+    if (matches.length > 1) {
+      toast.warning(`${matches.length} active visits matched — select the correct visitor.`);
+      setInsideSearch(last || first);
+      setScreen("inside");
+      return;
+    }
+    setCheckoutVisit(matches[0]);
+    setBadgeReturned(true);
+    toast.success(
+      byDocument.length ? "Matched on document number" : "Matched on the visitor's name",
+    );
     setScreen("checkoutMatch");
   }
 
@@ -962,15 +1007,37 @@ function Reception() {
           <div className="space-y-3">
             <h1 className="text-xl font-bold">Check out visitor</h1>
             <p className="text-xs text-muted-foreground">
-              Scan the visitor pass QR code or the barcode on the original identity document.
+              Scan the same identity document presented at check-in — the visitor is matched on
+              first name, last name or document number. You can also scan the visitor pass or check
+              out manually.
             </p>
-            <DocumentScanner
-              mode="code"
-              hint="Visitor pass QR code or ID barcode"
-              onCode={matchCheckoutCode}
-            />
+            <div className="grid grid-cols-2 gap-2 rounded-2xl bg-muted p-1">
+              <button
+                type="button"
+                onClick={() => setCheckoutMode("id")}
+                className={`h-9 rounded-xl text-xs font-bold ${checkoutMode === "id" ? "bg-card shadow-card" : "text-muted-foreground"}`}
+              >
+                Scan identity document
+              </button>
+              <button
+                type="button"
+                onClick={() => setCheckoutMode("code")}
+                className={`h-9 rounded-xl text-xs font-bold ${checkoutMode === "code" ? "bg-card shadow-card" : "text-muted-foreground"}`}
+              >
+                Pass QR / barcode
+              </button>
+            </div>
+            {checkoutMode === "id" ? (
+              <IdScanner onAccept={matchCheckoutIdentity} onCancel={() => setScreen("inside")} />
+            ) : (
+              <DocumentScanner
+                mode="code"
+                hint="Visitor pass QR code or ID barcode"
+                onCode={matchCheckoutCode}
+              />
+            )}
             <Button size="block" variant="secondary" onClick={() => setScreen("inside")}>
-              Select from visitors inside
+              Manual checkout — select from visitors inside
             </Button>
           </div>
         )}

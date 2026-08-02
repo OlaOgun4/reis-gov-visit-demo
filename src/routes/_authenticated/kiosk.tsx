@@ -1,6 +1,6 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { ArrowLeft, CheckCircle2, LogIn, LogOut, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,10 +17,12 @@ import {
   formatTime,
   fullName,
   logAudit,
+  canUseMobileApp,
   type Department,
   type Host,
   type Visit,
 } from "@/lib/govvisit";
+import { useSession } from "@/hooks/use-session";
 
 export const Route = createFileRoute("/_authenticated/kiosk")({
   head: () => ({
@@ -45,6 +47,16 @@ export const Route = createFileRoute("/_authenticated/kiosk")({
 type Step = "welcome" | "scan" | "confirm" | "pass" | "out" | "outDone";
 
 function Kiosk() {
+  const { data: session } = useSession();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (session && !canUseMobileApp(session)) {
+      toast.error("Department Receptionists use the web administration, not the kiosk app.");
+      navigate({ to: "/dashboard", replace: true });
+    }
+  }, [session, navigate]);
+
   const [step, setStep] = useState<Step>("welcome");
   const [busy, setBusy] = useState(false);
   const [identity, setIdentity] = useState<ParsedIdentity | null>(null);

@@ -57,7 +57,7 @@ export const ROLES: RoleMeta[] = [
     rank: 5,
     scope: "Department",
     summary:
-      "Full control of the assigned department. Cannot delete Department Manager or higher accounts, or logs.",
+      "Views departmental visitors and creates or updates pre-booked visits for the assigned department. Cannot delete any record and has no access to the mobile reception app.",
   },
   {
     role: "receptionist",
@@ -100,14 +100,19 @@ export function canManageDept(actor?: Actor | null, departmentId?: string | null
   return false;
 }
 
-/** Can delete records that belong to the given department. Receptionist is always blocked. */
+/** Can delete records in the given department. Both receptionist roles are blocked. */
 export function canDeleteDept(actor?: Actor | null, departmentId?: string | null) {
-  return canManageDept(actor, departmentId);
+  return (actor?.rank ?? 99) <= 4 && canManageDept(actor, departmentId);
 }
 
-/** Visitor identity records are not department scoped; every role except Receptionist may delete. */
+/** Visitor identity records: only ranks 1-4 may delete. */
 export function canDeleteVisitorRecord(actor?: Actor | null) {
-  return (actor?.rank ?? 99) <= 5;
+  return (actor?.rank ?? 99) <= 4;
+}
+
+/** Department Receptionists work in the web dashboard only — never the mobile reception app. */
+export function canUseMobileApp(actor?: Actor | null) {
+  return (actor?.rank ?? 99) !== 5;
 }
 
 /** Only the Super Administrator may delete audit log entries. */
@@ -237,6 +242,7 @@ export interface FacilityConfig {
   approval_workflow: string;
   retention_months: number;
   overdue_grace_minutes: number;
+  rows_per_page: number;
 }
 
 export interface AuditLog {
