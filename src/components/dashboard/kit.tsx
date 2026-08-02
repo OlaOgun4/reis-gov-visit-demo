@@ -88,20 +88,65 @@ export function Panel({
   );
 }
 
-export function DataTable({ head, children }: { head: string[]; children: ReactNode }) {
+export type SortDir = "asc" | "desc";
+export type HeadCell = string | { label: string; sortKey?: string };
+
+function headLabel(h: HeadCell) {
+  return typeof h === "string" ? h : h.label;
+}
+
+export function DataTable({
+  head,
+  children,
+  sortKey,
+  sortDir,
+  onSort,
+  maxHeight = "60vh",
+}: {
+  head: HeadCell[];
+  children: ReactNode;
+  sortKey?: string | null;
+  sortDir?: SortDir;
+  onSort?: (key: string) => void;
+  maxHeight?: string;
+}) {
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-auto" style={{ maxHeight }}>
       <table className="w-full border-collapse text-sm">
-        <thead>
+        <thead className="sticky top-0 z-10">
           <tr>
-            {head.map((h) => (
-              <th
-                key={h}
-                className="whitespace-nowrap border-b border-border bg-muted/60 px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-muted-foreground"
-              >
-                {h}
-              </th>
-            ))}
+            {head.map((h, i) => {
+              const key = typeof h === "string" ? undefined : h.sortKey;
+              const active = Boolean(key) && key === sortKey;
+              return (
+                <th
+                  key={`${headLabel(h)}-${i}`}
+                  className="whitespace-nowrap border-b border-border bg-muted/60 px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-muted-foreground"
+                >
+                  {key && onSort ? (
+                    <button
+                      type="button"
+                      onClick={() => onSort(key)}
+                      className="inline-flex items-center gap-1 uppercase tracking-wide hover:text-foreground"
+                      aria-label={`Sort by ${headLabel(h)}`}
+                    >
+                      {headLabel(h)}
+                      {active ? (
+                        sortDir === "asc" ? (
+                          <ArrowUp className="size-3" />
+                        ) : (
+                          <ArrowDown className="size-3" />
+                        )
+                      ) : (
+                        <ChevronsUpDown className="size-3 opacity-40" />
+                      )}
+                    </button>
+                  ) : (
+                    headLabel(h)
+                  )}
+                </th>
+              );
+            })}
           </tr>
         </thead>
         <tbody>{children}</tbody>
@@ -110,6 +155,118 @@ export function DataTable({ head, children }: { head: string[]; children: ReactN
   );
 }
 
+export interface TableView<T> {
+  rows: T[];
+  total: number;
+  page: number;
+  pageCount: number;
+  pageSize: number;
+  sortKey: string | null;
+  sortDir: SortDir;
+  toggleSort: (key: string) => void;
+  setPage: (p: number) => void;
+}
+
+/** Client-side filtering, sorting and pagination shared by every dashboard table. */
+export function useTableView<T>(
+  rows: T[],
+  options: {
+    pageSize: number;
+    search?: string;
+    searchText?: (row: T) => string;
+    sorters?: Record<string, (row: T) => string | number | null | undefined>;
+    initialSort?: string;
+    initialDir?: SortDir;
+  },
+): TableView<T> {
+  const { pageSize, search = "", searchText, sorters, initialSort, initialDir } = options;
+  const [sortKey, setSortKey] = useState<string | null>(initialSort ?? null);
+  const [sortDir, setSortDir] = useState<SortDir>(initialDir ?? "asc");
+  const [page, setPage] = useState(1);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q || !searchText) return rows;
+    return rows.filter((r) => searchText(r).toLowerCase().includes(q));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, search]);
+
+  const sorted = useMemo(() => {
+    const sorter = sortKey ? sorters?.[sortKey] : undefined;
+    if (!sorter) return filtered;
+    const dir = sortDir === "asc" ? 1 : -1;
+    return [...filtered].sort((a, b) => {
+      const av = sorter(a);
+      const bv = sorter(b);
+      if (av == null && bv == null) return 0;
+      if (av == null) return 1;
+      if (bv == null) return -1;
+      if (typeof av === "number" && typeof bv === "number") return (av - bv) * dir;
+      return String(av).localeCompare(String(bv), undefined, { numeric: true }) * dir;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtered, sortKey, sortDir]);
+
+  const size = Math.max(1, pageSize);
+  const pageCount = Math.max(1, Math.ceil(sorted.length / size));
+  const current = Math.min(page, pageCount);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, pageSize, sortKey, sortDir]);
+
+  return {
+    rows: sorted.slice((current - 1) * size, current * size),
+    total: sorted.length,
+    page: current,
+    pageCount,
+    pageSize: size,
+    sortKey,
+    sortDir,
+    toggleSort: (key: string) => {
+      if (key === sortKey) setSortDir(sortDir === "asc" ? "desc" : "asc");
+      else {
+        setSortKey(key);
+        setSortDir("asc");
+      }
+    },
+    setPage,
+  };
+}
+
+export function TablePagination<T>({ view, noun = "row" }: { view: TableView<T>; noun?: string }) {
+  const from = view.total === 0 ? 0 : (view.page - 1) * view.pageSize + 1;
+  const to = Math.min(view.total, view.page * view.pageSize);
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-5 py-3 text-xs text-muted-foreground">
+      <p>
+        Showing {from}–{to} of {view.total} {noun}
+        {view.total === 1 ? "" : "s"}
+      </p>
+      <div className="flex items-center gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={view.page <= 1}
+          onClick={() => view.setPage(view.page - 1)}
+        >
+          Previous
+        </Button>
+        <span className="font-semibold">
+          Page {view.page} of {view.pageCount}
+        </span>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={view.page >= view.pageCount}
+          onClick={() => view.setPage(view.page + 1)}
+        >
+          Next
+        </Button>
+      </div>
+    </div>
+  );
+}
 export function Td({ children, className }: { children?: ReactNode; className?: string }) {
   return (
     <td className={`whitespace-nowrap border-b border-border px-4 py-3 ${className ?? ""}`}>
