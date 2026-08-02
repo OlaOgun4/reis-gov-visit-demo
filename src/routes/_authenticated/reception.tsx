@@ -25,6 +25,7 @@ import { DocumentScanner } from "@/components/scanner/document-scanner";
 import { IdScanner, type IdScanResult } from "@/components/scanner/id-scanner";
 import { QrCode } from "@/components/scanner/qr-code";
 import type { ParsedIdentity } from "@/lib/mrz";
+import { registrationErrorMessage, registrationStageError } from "@/lib/registration";
 import {
   ACCESS_ZONES,
   APPROVALS,
@@ -313,15 +314,16 @@ function Reception() {
     }
     setSaving(true);
     try {
-      const { data: existing } = await supabase
+      const { data: existing, error: lookupError } = await supabase
         .from("visitors")
         .select("*")
         .eq("document_number", draft.documentNumber)
         .maybeSingle();
+      if (lookupError) throw registrationStageError("Finding visitor", lookupError);
 
       let visitorId = existing?.id as string | undefined;
       if (visitorId) {
-        await supabase
+        const { error: updateError } = await supabase
           .from("visitors")
           .update({
             first_name: draft.firstName,
@@ -331,6 +333,7 @@ function Reception() {
             document_type: draft.documentType,
           })
           .eq("id", visitorId);
+        if (updateError) throw registrationStageError("Updating visitor", updateError);
       } else {
         const { data: created, error } = await supabase
           .from("visitors")
@@ -344,8 +347,28 @@ function Reception() {
           })
           .select("*")
           .single();
-        if (error) throw error;
+        if (error) throw registrationStageError("Creating visitor", error);
         visitorId = created.id;
+      }
+
+      const { data: activeVisit, error: activeVisitError } = await supabase
+        .from("visits")
+        .select(VISIT_SELECT)
+        .eq("visitor_id", visitorId!)
+        .eq("status", "inside")
+        .order("checked_in_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (activeVisitError) {
+        throw registrationStageError("Checking for an active visit", activeVisitError);
+      }
+
+      if (activeVisit) {
+        setLastVisit(activeVisit as Visit);
+        refresh();
+        setScreen("success");
+        toast.info("This visitor is already checked in. Their active pass has been restored.");
+        return;
       }
 
       const { data: visit, error: visitError } = await supabase
@@ -364,17 +387,25 @@ function Reception() {
         })
         .select(VISIT_SELECT)
         .single();
-      if (visitError) throw visitError;
+      if (visitError) throw registrationStageError("Creating visit", visitError);
 
       if (booking) {
-        await supabase.from("bookings").update({ status: "arrived" }).eq("id", booking.id);
+        const { error: bookingError } = await supabase
+          .from("bookings")
+          .update({ status: "arrived" })
+          .eq("id", booking.id);
+        if (bookingError) {
+          toast.warning(
+            `Check-in succeeded, but the booking status could not be updated: ${registrationErrorMessage(bookingError)}`,
+          );
+        }
       }
       await logAudit("Visitor check-in", (visit as Visit).pass_code);
       setLastVisit(visit as Visit);
       refresh();
       setScreen("success");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not complete registration");
+      toast.error(registrationErrorMessage(err));
     } finally {
       setSaving(false);
     }
