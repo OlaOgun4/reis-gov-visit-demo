@@ -147,17 +147,31 @@ function LiveVisitors() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const rows = (visits.data ?? []).filter((v) =>
-    `${fullName(v.visitors)} ${v.hosts?.full_name ?? ""} ${v.departments?.name ?? ""} ${v.pass_code}`
-      .toLowerCase()
-      .includes(search.toLowerCase()),
-  );
+  const rows = visits.data ?? [];
+  const view = useTableView(rows, {
+    pageSize,
+    search,
+    searchText: (v) =>
+      `${fullName(v.visitors)} ${v.hosts?.full_name ?? ""} ${v.departments?.name ?? ""} ${v.pass_code} ${v.visitors?.organisation ?? ""}`,
+    sorters: {
+      visitor: (v) => fullName(v.visitors),
+      type: (v) => v.visit_type,
+      organisation: (v) => v.visitors?.organisation ?? "",
+      department: (v) => v.departments?.code ?? "",
+      host: (v) => v.hosts?.full_name ?? "",
+      checkin: (v) => v.checked_in_at,
+      duration: (v) => new Date(v.checked_in_at).getTime(),
+      status: (v) => v.status,
+    },
+    initialSort: "checkin",
+    initialDir: "desc",
+  });
 
   return (
     <div>
       <PageHeader
         title="Live visitors"
-        description={`${rows.length} visitor${rows.length === 1 ? "" : "s"} currently inside the facility.`}
+        description={`${view.total} visitor${view.total === 1 ? "" : "s"} currently inside the facility.`}
         actions={
           <Button
             onClick={() => {
@@ -194,19 +208,22 @@ function LiveVisitors() {
         }
       >
         <DataTable
+          sortKey={view.sortKey}
+          sortDir={view.sortDir}
+          onSort={view.toggleSort}
           head={[
-            "Visitor",
-            "Type",
-            "Organisation",
-            "Department",
-            "Host",
-            "Check-in",
-            "Duration",
-            "Status",
+            { label: "Visitor", sortKey: "visitor" },
+            { label: "Type", sortKey: "type" },
+            { label: "Organisation", sortKey: "organisation" },
+            { label: "Department", sortKey: "department" },
+            { label: "Host", sortKey: "host" },
+            { label: "Check-in", sortKey: "checkin" },
+            { label: "Duration", sortKey: "duration" },
+            { label: "Status", sortKey: "status" },
             "",
           ]}
         >
-          {rows.map((v) => (
+          {view.rows.map((v) => (
             <tr key={v.id}>
               <Td className="font-semibold">
                 {fullName(v.visitors)}
@@ -258,8 +275,9 @@ function LiveVisitors() {
               </Td>
             </tr>
           ))}
-          {rows.length === 0 && <EmptyRow colSpan={9} message="Nobody is currently inside." />}
+          {view.rows.length === 0 && <EmptyRow colSpan={9} message="Nobody is currently inside." />}
         </DataTable>
+        <TablePagination view={view} noun="visitors" />
       </Panel>
 
       <FormDialog
