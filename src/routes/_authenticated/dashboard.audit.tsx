@@ -186,7 +186,7 @@ function AuditPage() {
           ))}
           {view.rows.length === 0 && <EmptyRow colSpan={6} message="No audit entries yet." />}
         </DataTable>
-        <TablePagination view={view} noun="entry" />
+        <TablePagination view={view} noun="entries" />
       </Panel>
     </div>
   );
