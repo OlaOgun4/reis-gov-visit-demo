@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight, ClipboardCheck, LayoutDashboard, ShieldCheck, Users } from "lucide-react";
 import heroImage from "@/assets/govvisit-hero.jpg";
-import coatOfArms from "@/assets/nigeria-coat-of-arms.png";
+import nigeriaCoatOfArms from "@/assets/nigeria-coat-of-arms.svg";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useSession } from "@/hooks/use-session";
