@@ -179,6 +179,32 @@ function DirectoryPage() {
       ),
   });
 
+  const deptView = useTableView(departments.data ?? [], {
+    pageSize,
+    search: deptSearch,
+    searchText: (d) => `${d.name} ${d.code}`,
+    sorters: {
+      name: (d) => d.name,
+      code: (d) => d.code,
+      status: (d) => String(d.active),
+    },
+    initialSort: "name",
+  });
+
+  const hostView = useTableView(hosts.data ?? [], {
+    pageSize,
+    search: hostSearch,
+    searchText: (h) =>
+      `${h.full_name} ${h.job_title} ${h.email ?? ""} ${h.phone ?? ""} ${h.departments?.code ?? ""}`,
+    sorters: {
+      host: (h) => h.full_name,
+      department: (h) => h.departments?.code ?? "",
+      contact: (h) => h.email ?? "",
+      status: (h) => String(h.active),
+    },
+    initialSort: "host",
+  });
+
   return (
     <div>
       <PageHeader
@@ -190,6 +216,13 @@ function DirectoryPage() {
         <Panel
           title="Departments"
           actions={
+            <>
+            <Input
+              className="w-40"
+              placeholder="Search"
+              value={deptSearch}
+              onChange={(e) => setDeptSearch(e.target.value)}
+            />
             <Button
               size="sm"
               disabled={!isAdmin}
@@ -201,10 +234,21 @@ function DirectoryPage() {
             >
               Add department
             </Button>
+            </>
           }
         >
-          <DataTable head={["Department", "Code", "Status", ""]}>
-            {(departments.data ?? []).map((d) => (
+          <DataTable
+            sortKey={deptView.sortKey}
+            sortDir={deptView.sortDir}
+            onSort={deptView.toggleSort}
+            head={[
+              { label: "Department", sortKey: "name" },
+              { label: "Code", sortKey: "code" },
+              { label: "Status", sortKey: "status" },
+              "",
+            ]}
+          >
+            {deptView.rows.map((d) => (
               <tr key={d.id}>
                 <Td className="font-semibold">{d.name}</Td>
                 <Td>{d.code}</Td>
@@ -237,15 +281,23 @@ function DirectoryPage() {
                 </Td>
               </tr>
             ))}
-            {(departments.data ?? []).length === 0 && (
+            {deptView.rows.length === 0 && (
               <EmptyRow colSpan={4} message="No departments yet." />
             )}
           </DataTable>
+          <TablePagination view={deptView} noun="departments" />
         </Panel>
 
         <Panel
           title="Hosts"
           actions={
+            <>
+            <Input
+              className="w-40"
+              placeholder="Search"
+              value={hostSearch}
+              onChange={(e) => setHostSearch(e.target.value)}
+            />
             <Button
               size="sm"
               disabled={!isAdmin || (departments.data ?? []).length === 0}
@@ -260,10 +312,22 @@ function DirectoryPage() {
             >
               Add host
             </Button>
+            </>
           }
         >
-          <DataTable head={["Host", "Department", "Contact", "Status", ""]}>
-            {(hosts.data ?? []).map((h) => (
+          <DataTable
+            sortKey={hostView.sortKey}
+            sortDir={hostView.sortDir}
+            onSort={hostView.toggleSort}
+            head={[
+              { label: "Host", sortKey: "host" },
+              { label: "Department", sortKey: "department" },
+              { label: "Contact", sortKey: "contact" },
+              { label: "Status", sortKey: "status" },
+              "",
+            ]}
+          >
+            {hostView.rows.map((h) => (
               <tr key={h.id}>
                 <Td className="font-semibold">
                   {h.full_name}
@@ -312,8 +376,9 @@ function DirectoryPage() {
                 </Td>
               </tr>
             ))}
-            {(hosts.data ?? []).length === 0 && <EmptyRow colSpan={5} message="No hosts yet." />}
+            {hostView.rows.length === 0 && <EmptyRow colSpan={5} message="No hosts yet." />}
           </DataTable>
+          <TablePagination view={hostView} noun="hosts" />
         </Panel>
       </div>
 
