@@ -464,7 +464,7 @@ function GovernmentBrand({ variant = "default" }: { variant?: "default" | "inver
         }`}
       >
         <img
-          src={coatOfArms}
+          src={nigeriaCoatOfArms}
           alt="Coat of Arms of the Federal Republic of Nigeria"
           width={265}
           height={177}
