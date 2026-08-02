@@ -63,6 +63,7 @@ function LiveVisitors() {
   const [search, setSearch] = useState("");
   const [editing, setEditing] = useState<Visit | null>(null);
   const [form, setForm] = useState({ hostId: "", minutes: "60", zone: ACCESS_ZONES[0], notes: "" });
+  const pageSize = useRowsPerPage();
 
   const visits = useQuery({
     queryKey: ["visits", "inside"],
