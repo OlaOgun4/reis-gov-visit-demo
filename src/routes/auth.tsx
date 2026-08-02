@@ -6,7 +6,7 @@ import { landingPath, roleRank, type AppRole } from "@/lib/govvisit";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import coatOfArms from "@/assets/nigeria-coat-of-arms.png";
+import nigeriaCoatOfArms from "@/assets/nigeria-coat-of-arms.svg";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
