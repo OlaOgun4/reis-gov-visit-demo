@@ -153,6 +153,7 @@ export type Database = {
           organisation_name: string
           overdue_grace_minutes: number
           retention_months: number
+          rows_per_page: number
           updated_at: string
         }
         Insert: {
@@ -163,6 +164,7 @@ export type Database = {
           organisation_name?: string
           overdue_grace_minutes?: number
           retention_months?: number
+          rows_per_page?: number
           updated_at?: string
         }
         Update: {
@@ -173,6 +175,7 @@ export type Database = {
           organisation_name?: string
           overdue_grace_minutes?: number
           retention_months?: number
+          rows_per_page?: number
           updated_at?: string
         }
         Relationships: []
