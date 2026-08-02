@@ -17,9 +17,12 @@ import {
   PageHeader,
   Panel,
   SelectField,
+  TablePagination,
   Td,
   TextField,
+  useTableView,
 } from "@/components/dashboard/kit";
+import { useRowsPerPage } from "@/hooks/use-rows-per-page";
 import {
   canDeleteDept,
   PURPOSES,
@@ -73,6 +76,7 @@ function BookingsPage() {
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(empty);
+  const pageSize = useRowsPerPage();
 
   const bookings = useQuery({
     queryKey: ["bookings", "all"],
@@ -172,11 +176,22 @@ function BookingsPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const rows = (bookings.data ?? []).filter((b) =>
-    `${b.visitor_name} ${b.organisation ?? ""} ${b.reference} ${b.hosts?.full_name ?? ""}`
-      .toLowerCase()
-      .includes(search.toLowerCase()),
-  );
+  const view = useTableView(bookings.data ?? [], {
+    pageSize,
+    search,
+    searchText: (b) =>
+      `${b.visitor_name} ${b.organisation ?? ""} ${b.reference} ${b.hosts?.full_name ?? ""} ${b.departments?.name ?? ""} ${b.status}`,
+    sorters: {
+      reference: (b) => b.reference,
+      visitor: (b) => b.visitor_name,
+      department: (b) => b.departments?.code ?? "",
+      host: (b) => b.hosts?.full_name ?? "",
+      purpose: (b) => b.purpose,
+      expected: (b) => b.expected_at,
+      status: (b) => b.status,
+    },
+    initialSort: "expected",
+  });
 
   const hostOptions = (hosts.data ?? [])
     .filter((h) => !form.department_id || h.department_id === form.department_id)
@@ -201,7 +216,7 @@ function BookingsPage() {
       />
 
       <Panel
-        title={`${rows.length} booking${rows.length === 1 ? "" : "s"}`}
+        title={`${view.total} booking${view.total === 1 ? "" : "s"}`}
         actions={
           <Input
             className="w-56"
@@ -212,9 +227,21 @@ function BookingsPage() {
         }
       >
         <DataTable
-          head={["Reference", "Visitor", "Department", "Host", "Purpose", "Expected", "Status", ""]}
+          sortKey={view.sortKey}
+          sortDir={view.sortDir}
+          onSort={view.toggleSort}
+          head={[
+            { label: "Reference", sortKey: "reference" },
+            { label: "Visitor", sortKey: "visitor" },
+            { label: "Department", sortKey: "department" },
+            { label: "Host", sortKey: "host" },
+            { label: "Purpose", sortKey: "purpose" },
+            { label: "Expected", sortKey: "expected" },
+            { label: "Status", sortKey: "status" },
+            "",
+          ]}
         >
-          {rows.map((b) => (
+          {view.rows.map((b) => (
             <tr key={b.id}>
               <Td className="text-xs text-muted-foreground">{b.reference}</Td>
               <Td className="font-semibold">
@@ -288,8 +315,9 @@ function BookingsPage() {
               </Td>
             </tr>
           ))}
-          {rows.length === 0 && <EmptyRow colSpan={8} message="No bookings found." />}
+          {view.rows.length === 0 && <EmptyRow colSpan={8} message="No bookings found." />}
         </DataTable>
+        <TablePagination view={view} noun="bookings" />
       </Panel>
 
       <FormDialog
