@@ -16,6 +16,7 @@ import {
   Zap,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import nigeriaCoatOfArms from "@/assets/nigeria-coat-of-arms.svg";
 import { Button } from "@/components/ui/button";
 import { useSession } from "@/hooks/use-session";
 import { canUseMobileApp, initials, roleLabel, type FacilityConfig } from "@/lib/govvisit";
@@ -66,8 +67,12 @@ function DashboardLayout() {
     <div className="min-h-screen bg-background lg:grid lg:grid-cols-[260px_1fr]">
       <aside className="bg-sidebar px-3 py-5 text-sidebar-foreground lg:sticky lg:top-0 lg:h-screen lg:overflow-y-auto">
         <div className="flex items-center gap-3 px-2 pb-5">
-          <div className="grid size-10 place-items-center rounded-xl bg-sidebar-foreground font-display text-base text-sidebar">
-            FG
+          <div className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-xl bg-white p-0.5">
+            <img
+              src={nigeriaCoatOfArms}
+              alt="Coat of Arms of the Federal Republic of Nigeria"
+              className="h-full w-full object-contain"
+            />
           </div>
           <div>
             <p className="font-display text-lg leading-none">GovVisit Admin</p>

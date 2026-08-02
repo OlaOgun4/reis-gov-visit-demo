@@ -14,6 +14,7 @@ import {
   Users,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import nigeriaCoatOfArms from "@/assets/nigeria-coat-of-arms.svg";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -515,8 +516,12 @@ function Reception() {
                 <ArrowLeft className="size-5" />
               </button>
             ) : (
-              <div className="grid size-10 place-items-center rounded-xl bg-primary-foreground font-display text-base text-primary">
-                FG
+              <div className="grid size-10 place-items-center overflow-hidden rounded-xl bg-white p-0.5">
+                <img
+                  src={nigeriaCoatOfArms}
+                  alt="Coat of Arms of the Federal Republic of Nigeria"
+                  className="h-full w-full object-contain"
+                />
               </div>
             )}
             <div>

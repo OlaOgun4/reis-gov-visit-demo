@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { ArrowLeft, CheckCircle2, LogIn, LogOut, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import nigeriaCoatOfArms from "@/assets/nigeria-coat-of-arms.svg";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -236,8 +237,12 @@ function Kiosk() {
       <div className="mx-auto max-w-2xl space-y-6">
         <header className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="grid size-12 place-items-center rounded-xl bg-primary font-display text-xl text-primary-foreground">
-              FG
+            <div className="grid size-12 place-items-center overflow-hidden rounded-xl border border-border bg-white p-1">
+              <img
+                src={nigeriaCoatOfArms}
+                alt="Coat of Arms of the Federal Republic of Nigeria"
+                className="h-full w-full object-contain"
+              />
             </div>
             <div>
               <p className="font-display text-2xl leading-none">Visitor self-service</p>
