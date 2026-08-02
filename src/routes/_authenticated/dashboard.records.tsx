@@ -69,6 +69,7 @@ function RecordsPage() {
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(empty);
+  const pageSize = useRowsPerPage();
 
   const visitors = useQuery({
     queryKey: ["visitors"],
@@ -139,11 +140,24 @@ function RecordsPage() {
       ),
   });
 
-  const rows = (visitors.data ?? []).filter((v) =>
-    `${v.first_name} ${v.last_name} ${v.organisation ?? ""} ${v.reference} ${v.document_number}`
-      .toLowerCase()
-      .includes(search.toLowerCase()),
-  );
+  const rows = visitors.data ?? [];
+  const view = useTableView(rows, {
+    pageSize,
+    search,
+    searchText: (v) =>
+      `${v.first_name} ${v.last_name} ${v.organisation ?? ""} ${v.reference} ${v.document_number} ${v.risk}`,
+    sorters: {
+      reference: (v) => v.reference,
+      visitor: (v) => `${v.first_name} ${v.last_name}`,
+      organisation: (v) => v.organisation ?? "",
+      contact: (v) => v.phone ?? "",
+      document: (v) => `${v.document_type} ${v.document_number}`,
+      risk: (v) => v.risk,
+      added: (v) => v.created_at,
+    },
+    initialSort: "added",
+    initialDir: "desc",
+  });
 
   return (
     <div>
@@ -185,7 +199,7 @@ function RecordsPage() {
       />
 
       <Panel
-        title={`${rows.length} record${rows.length === 1 ? "" : "s"}`}
+        title={`${view.total} record${view.total === 1 ? "" : "s"}`}
         actions={
           <Input
             className="w-56"
@@ -196,18 +210,21 @@ function RecordsPage() {
         }
       >
         <DataTable
+          sortKey={view.sortKey}
+          sortDir={view.sortDir}
+          onSort={view.toggleSort}
           head={[
-            "Reference",
-            "Visitor",
-            "Organisation",
-            "Contact",
-            "Document",
-            "Risk",
-            "Added",
+            { label: "Reference", sortKey: "reference" },
+            { label: "Visitor", sortKey: "visitor" },
+            { label: "Organisation", sortKey: "organisation" },
+            { label: "Contact", sortKey: "contact" },
+            { label: "Document", sortKey: "document" },
+            { label: "Risk", sortKey: "risk" },
+            { label: "Added", sortKey: "added" },
             "",
           ]}
         >
-          {rows.map((v) => (
+          {view.rows.map((v) => (
             <tr key={v.id}>
               <Td className="text-xs text-muted-foreground">{v.reference}</Td>
               <Td className="font-semibold">
@@ -268,8 +285,9 @@ function RecordsPage() {
               </Td>
             </tr>
           ))}
-          {rows.length === 0 && <EmptyRow colSpan={8} message="No visitor records found." />}
+          {view.rows.length === 0 && <EmptyRow colSpan={8} message="No visitor records found." />}
         </DataTable>
+        <TablePagination view={view} noun="records" />
       </Panel>
 
       <FormDialog
