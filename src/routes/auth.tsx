@@ -1,4 +1,4 @@
-import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -212,7 +212,7 @@ function AuthPage() {
           <header className="flex items-center justify-between gap-4">
             <GovernmentBrand variant="inverse" />
             <span className="hidden rounded-full border border-white/25 bg-white/10 px-3 py-1.5 text-xs font-semibold backdrop-blur sm:inline-flex">
-              Version 1 Demonstration
+              Prototype Demo
             </span>
           </header>
 
@@ -301,13 +301,6 @@ function AuthPage() {
 
       <section className="flex min-h-[720px] items-center justify-center px-6 py-12 sm:px-10 lg:min-h-screen lg:px-12">
         <div className="w-full max-w-md">
-          <Link
-            to="/"
-            className="inline-flex items-center gap-1 text-xs font-semibold text-muted-foreground transition hover:text-primary"
-          >
-            <span aria-hidden="true">←</span> Back to overview
-          </Link>
-
           <div className="mt-8">
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">
               Secure staff access
