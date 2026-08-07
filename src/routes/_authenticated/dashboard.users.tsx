@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Pencil, Plus, ShieldCheck } from "lucide-react";
+import { ChevronDown, ChevronRight, Pencil, Plus, ShieldCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   createStaffUser,
@@ -91,6 +91,7 @@ function UsersPage() {
     role: "receptionist" as AppRole,
   });
   const [search, setSearch] = useState("");
+  const [hierarchyOpen, setHierarchyOpen] = useState(true);
   const pageSize = useRowsPerPage();
 
   const createStaff = createStaffUser;
