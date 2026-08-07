@@ -339,6 +339,7 @@ export function TextField({
   type = "text",
   required,
   placeholder,
+  disabled,
 }: {
   label: string;
   value: string;
@@ -346,6 +347,7 @@ export function TextField({
   type?: string;
   required?: boolean;
   placeholder?: string;
+  disabled?: boolean;
 }) {
   return (
     <div>
@@ -356,6 +358,7 @@ export function TextField({
         value={value}
         required={required}
         placeholder={placeholder}
+        disabled={disabled}
         onChange={(e) => onChange(e.target.value)}
       />
     </div>

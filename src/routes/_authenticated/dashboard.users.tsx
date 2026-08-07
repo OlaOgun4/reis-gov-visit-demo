@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Pencil, Plus, ShieldCheck } from "lucide-react";
+import { ChevronDown, ChevronRight, Pencil, Plus, ShieldCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   createStaffUser,
@@ -91,6 +91,7 @@ function UsersPage() {
     role: "receptionist" as AppRole,
   });
   const [search, setSearch] = useState("");
+  const [hierarchyOpen, setHierarchyOpen] = useState(true);
   const pageSize = useRowsPerPage();
 
   const createStaff = createStaffUser;
@@ -259,8 +260,9 @@ function UsersPage() {
         description="Assign roles and departments. You see and administer only the accounts your role covers — deletion rights follow the access hierarchy."
       />
 
-      <div className="grid gap-4">
+      <div className="grid gap-4 xl:grid-cols-3">
         <Panel
+          className={hierarchyOpen ? "xl:col-span-2" : "xl:col-span-3"}
           title={`${view.total} staff account${view.total === 1 ? "" : "s"}`}
           actions={
             <div className="flex items-center gap-2">
@@ -365,8 +367,23 @@ function UsersPage() {
           <TablePagination view={view} noun="accounts" />
         </Panel>
 
-        <Panel title="Access hierarchy">
-          <ul className="grid divide-y divide-border md:grid-cols-2 md:divide-y-0 xl:grid-cols-3">
+        <Panel
+          className={hierarchyOpen ? "" : "xl:col-span-3"}
+          title="Access hierarchy"
+          actions={
+            <Button
+              variant="ghost"
+              size="sm"
+              aria-expanded={hierarchyOpen}
+              onClick={() => setHierarchyOpen((v) => !v)}
+            >
+              {hierarchyOpen ? <ChevronDown /> : <ChevronRight />}
+              {hierarchyOpen ? "Collapse" : "Expand"}
+            </Button>
+          }
+        >
+          {hierarchyOpen && (
+          <ul className="grid divide-y divide-border">
             {ROLES.map((r) => (
               <li key={r.role} className="p-4">
                 <div className="flex items-center justify-between gap-2">
@@ -380,6 +397,7 @@ function UsersPage() {
               </li>
             ))}
           </ul>
+          )}
         </Panel>
       </div>
 

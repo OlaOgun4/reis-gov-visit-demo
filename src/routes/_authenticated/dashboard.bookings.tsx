@@ -193,9 +193,11 @@ function BookingsPage() {
     initialSort: "expected",
   });
 
-  const hostOptions = (hosts.data ?? [])
-    .filter((h) => !form.department_id || h.department_id === form.department_id)
-    .map((h) => ({ value: h.id, label: `${h.full_name} — ${h.job_title}` }));
+  const hostOptions = form.department_id
+    ? (hosts.data ?? [])
+        .filter((h) => h.department_id === form.department_id)
+        .map((h) => ({ value: h.id, label: `${h.full_name} — ${h.job_title}` }))
+    : [];
 
   return (
     <div>
@@ -359,7 +361,7 @@ function BookingsPage() {
           <SelectField
             label="Host"
             value={form.host_id}
-            placeholder="Select host"
+            placeholder={form.department_id ? "Select host" : "Select a department first"}
             onChange={(v) => setForm({ ...form, host_id: v })}
             options={hostOptions}
           />
