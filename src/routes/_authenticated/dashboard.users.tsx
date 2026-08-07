@@ -367,8 +367,22 @@ function UsersPage() {
           <TablePagination view={view} noun="accounts" />
         </Panel>
 
-        <Panel title="Access hierarchy">
-          <ul className="grid divide-y divide-border md:grid-cols-2 md:divide-y-0 xl:grid-cols-3">
+        <Panel
+          title="Access hierarchy"
+          actions={
+            <Button
+              variant="ghost"
+              size="sm"
+              aria-expanded={hierarchyOpen}
+              onClick={() => setHierarchyOpen((v) => !v)}
+            >
+              {hierarchyOpen ? <ChevronDown /> : <ChevronRight />}
+              {hierarchyOpen ? "Collapse" : "Expand"}
+            </Button>
+          }
+        >
+          {hierarchyOpen && (
+          <ul className="grid divide-y divide-border">
             {ROLES.map((r) => (
               <li key={r.role} className="p-4">
                 <div className="flex items-center justify-between gap-2">
@@ -382,6 +396,7 @@ function UsersPage() {
               </li>
             ))}
           </ul>
+          )}
         </Panel>
       </div>
 
