@@ -323,12 +323,17 @@ function RecordsPage() {
             onChange={(v) => setForm({ ...form, document_type: v })}
             options={DOCUMENT_TYPES.map((d) => ({ value: d, label: d }))}
           />
-          <TextField
-            label="Document number"
-            required
-            value={form.document_number}
-            onChange={(v) => setForm({ ...form, document_number: v })}
-          />
+          <div>
+            <TextField
+              label="Document number"
+              value={maskDocument(form.document_number)}
+              onChange={() => undefined}
+              disabled
+            />
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              Masked for privacy — captured at registration.
+            </p>
+          </div>
         </div>
         <SelectField
           label="Risk screening"
