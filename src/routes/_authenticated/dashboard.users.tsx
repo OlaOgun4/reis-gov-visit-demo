@@ -259,8 +259,9 @@ function UsersPage() {
         description="Assign roles and departments. You see and administer only the accounts your role covers — deletion rights follow the access hierarchy."
       />
 
-      <div className="grid gap-4">
+      <div className="grid gap-4 xl:grid-cols-3">
         <Panel
+          className={hierarchyOpen ? "xl:col-span-2" : "xl:col-span-3"}
           title={`${view.total} staff account${view.total === 1 ? "" : "s"}`}
           actions={
             <div className="flex items-center gap-2">

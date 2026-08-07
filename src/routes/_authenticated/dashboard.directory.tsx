@@ -180,7 +180,31 @@ function DirectoryPage() {
       ),
   });
 
-  const deptView = useTableView(departments.data ?? [], {
+  const deptQuery = deptSearch.trim().toLowerCase();
+  const hostQuery = hostSearch.trim().toLowerCase();
+
+  /** Searching hosts narrows the department list to the departments those hosts belong to. */
+  const visibleDepartments = (departments.data ?? []).filter((d) => {
+    if (!hostQuery) return true;
+    return (hosts.data ?? []).some(
+      (h) =>
+        h.department_id === d.id &&
+        `${h.full_name} ${h.job_title} ${h.email ?? ""} ${h.phone ?? ""}`
+          .toLowerCase()
+          .includes(hostQuery),
+    );
+  });
+
+  /** Searching departments narrows the host list to hosts inside the matching departments. */
+  const visibleHosts = (hosts.data ?? []).filter((h) => {
+    if (!deptQuery) return true;
+    return (departments.data ?? []).some(
+      (d) =>
+        d.id === h.department_id && `${d.name} ${d.code}`.toLowerCase().includes(deptQuery),
+    );
+  });
+
+  const deptView = useTableView(visibleDepartments, {
     pageSize,
     search: deptSearch,
     searchText: (d) => `${d.name} ${d.code}`,
@@ -192,7 +216,7 @@ function DirectoryPage() {
     initialSort: "name",
   });
 
-  const hostView = useTableView(hosts.data ?? [], {
+  const hostView = useTableView(visibleHosts, {
     pageSize,
     search: hostSearch,
     searchText: (h) =>
