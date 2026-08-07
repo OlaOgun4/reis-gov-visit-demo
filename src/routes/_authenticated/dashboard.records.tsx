@@ -165,8 +165,7 @@ function RecordsPage() {
         title="Visitor records"
         description="Identity database used by reception for repeat-visitor lookup."
         actions={
-          <>
-            <Button
+          <Button
               variant="outline"
               onClick={() =>
                 downloadCsv(
@@ -184,17 +183,7 @@ function RecordsPage() {
               }
             >
               Export CSV
-            </Button>
-            <Button
-              onClick={() => {
-                setEditingId(null);
-                setForm(empty);
-                setOpen(true);
-              }}
-            >
-              New visitor
-            </Button>
-          </>
+          </Button>
         }
       />
 
