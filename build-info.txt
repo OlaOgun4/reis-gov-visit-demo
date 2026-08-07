@@ -1,0 +1,4 @@
+npm install
+git add package-lock.json
+git commit -m "fix: update package-lock.json to match package.json"
+git push origin main
