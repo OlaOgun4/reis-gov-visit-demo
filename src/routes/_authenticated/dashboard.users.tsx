@@ -368,6 +368,7 @@ function UsersPage() {
         </Panel>
 
         <Panel
+          className={hierarchyOpen ? "" : "xl:col-span-3"}
           title="Access hierarchy"
           actions={
             <Button
