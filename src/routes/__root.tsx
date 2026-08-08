@@ -13,6 +13,7 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { AUTH_CHANNEL } from "@/lib/sign-out";
 
 function NotFoundComponent() {
   return (
@@ -133,9 +134,25 @@ function RootComponent() {
     if (sessionStorage.getItem(flag)) return;
     sessionStorage.setItem(flag, "1");
     supabase.auth.getSession().then(({ data }) => {
-      if (data.session) void supabase.auth.signOut();
+      // Global scope revokes the refresh token and any server-side sessions,
+      // so access cannot be regained after the browser was closed.
+      if (data.session) void supabase.auth.signOut({ scope: "global" });
     });
   }, []);
+
+  useEffect(() => {
+    // Cross-tab sign-out sync: when any tab signs out it broadcasts SIGNED_OUT;
+    // every other tab drops cached protected data and re-runs the auth gate,
+    // which redirects to /auth immediately.
+    const channel = new BroadcastChannel(AUTH_CHANNEL);
+    channel.onmessage = (event) => {
+      if (event.data !== "SIGNED_OUT") return;
+      void queryClient.cancelQueries();
+      queryClient.clear();
+      void router.invalidate();
+    };
+    return () => channel.close();
+  }, [router, queryClient]);
 
   useEffect(() => {
     const { data } = supabase.auth.onAuthStateChange((event) => {

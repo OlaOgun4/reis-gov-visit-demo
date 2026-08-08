@@ -20,6 +20,7 @@ import nigeriaCoatOfArms from "@/assets/nigeria-coat-of-arms.svg";
 import { Button } from "@/components/ui/button";
 import { useSession } from "@/hooks/use-session";
 import { canUseMobileApp, initials, roleLabel, type FacilityConfig } from "@/lib/govvisit";
+import { signOutEverywhere } from "@/lib/sign-out";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: DashboardLayout,
@@ -57,9 +58,7 @@ function DashboardLayout() {
   });
 
   async function signOut() {
-    await queryClient.cancelQueries();
-    queryClient.clear();
-    await supabase.auth.signOut();
+    await signOutEverywhere(queryClient);
     navigate({ to: "/auth", replace: true });
   }
 
