@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { ChevronDown, ChevronRight, Pencil, Plus, ShieldCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -91,7 +91,16 @@ function UsersPage() {
     role: "receptionist" as AppRole,
   });
   const [search, setSearch] = useState("");
-  const [hierarchyOpen, setHierarchyOpen] = useState(false);
+  const [hierarchyOpen, setHierarchyOpen] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem("govvisit-hierarchy-open") === "true";
+  });
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("govvisit-hierarchy-open", String(hierarchyOpen));
+    }
+  }, [hierarchyOpen]);
   const pageSize = useRowsPerPage();
 
   const createStaff = createStaffUser;
