@@ -483,9 +483,7 @@ function Reception() {
   }
 
   async function signOut() {
-    await queryClient.cancelQueries();
-    queryClient.clear();
-    await supabase.auth.signOut();
+    await signOutEverywhere(queryClient);
     navigate({ to: "/auth", replace: true });
   }
 
