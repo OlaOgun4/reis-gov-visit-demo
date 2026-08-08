@@ -27,6 +27,7 @@ import { IdScanner, type IdScanResult } from "@/components/scanner/id-scanner";
 import { QrCode } from "@/components/scanner/qr-code";
 import type { ParsedIdentity } from "@/lib/mrz";
 import { registrationErrorMessage, registrationStageError } from "@/lib/registration";
+import { signOutEverywhere } from "@/lib/sign-out";
 import {
   ACCESS_ZONES,
   APPROVALS,
