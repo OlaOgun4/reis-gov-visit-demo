@@ -91,7 +91,7 @@ function UsersPage() {
     role: "receptionist" as AppRole,
   });
   const [search, setSearch] = useState("");
-  const [hierarchyOpen, setHierarchyOpen] = useState(true);
+  const [hierarchyOpen, setHierarchyOpen] = useState(false);
   const pageSize = useRowsPerPage();
 
   const createStaff = createStaffUser;
