@@ -39,7 +39,7 @@ export const Route = createFileRoute("/auth")({
 /**
  * Only the global Receptionist starts at the reception desk.
  * Every other role lands on the administration dashboard, scoped by role,
- * department and rank through the existing GovVisit authorization model.
+ * department and rank through the existing GovVisit authorization model.To Fix
  */
 async function landingFor(userId: string) {
   const { data, error } = await supabase
