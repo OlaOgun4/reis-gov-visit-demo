@@ -125,6 +125,19 @@ function RootComponent() {
   const router = useRouter();
 
   useEffect(() => {
+    // Log the user out when the browser session ends: sessionStorage survives
+    // page reloads and tab restores within the same browser session, but is
+    // cleared when the browser is closed. On a fresh browser session, clear any
+    // persisted login from localStorage.
+    const flag = "govvisit.browser-session";
+    if (sessionStorage.getItem(flag)) return;
+    sessionStorage.setItem(flag, "1");
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) void supabase.auth.signOut();
+    });
+  }, []);
+
+  useEffect(() => {
     const { data } = supabase.auth.onAuthStateChange((event) => {
       if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
       router.invalidate();
